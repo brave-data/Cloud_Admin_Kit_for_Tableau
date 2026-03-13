@@ -1,0 +1,2364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau Cloud Manager</title>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<!-- DataTables -->
+<link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+<style>
+  :root {
+    --tc-blue:   #001942;  /* Prussian Blue */
+    --tc-mid:    #2F5B94;  /* Baltic Blue */
+    --tc-sky:    #4C9AED;  /* Cloudy Sky */
+    --tc-light:  #EBF3FD;
+    --tc-green:  #1a7a38;
+    --tc-red:    #EC4B4B;  /* Strawberry Red */
+
+    /* Theme tokens (light default) */
+    --bg-page:        #f0f4f8;
+    --bg-card:        #ffffff;
+    --bg-table-head:  var(--tc-blue);
+    --bg-row-hover:   var(--tc-light);
+    --bg-detail:      #f8fafd;
+    --bg-detail-row:  #eef4fb;
+    --text-body:      #212529;
+    --text-muted2:    #6c757d;
+    --text-secondary2:#495057;
+    --border-subtle:  #e9ecef;
+    --card-shadow:    0 2px 8px rgba(0,25,66,.08);
+  }
+
+  [data-theme="dark"] {
+    --bg-page:        #0f1624;
+    --bg-card:        #1a2540;
+    --bg-table-head:  #0d1e38;
+    --bg-row-hover:   #1e2e50;
+    --bg-detail:      #162035;
+    --bg-detail-row:  #1a2a44;
+    --text-body:      #ffffff;
+    --text-muted2:    #a0b8d8;
+    --text-secondary2:#c0d0e8;
+    --border-subtle:  #2a3a55;
+    --card-shadow:    0 2px 8px rgba(0,0,0,.5);
+  }
+
+  body { background: var(--bg-page); color: var(--text-body); font-size: 14px; transition: background .25s, color .25s; }
+
+  /* Navbar */
+  .navbar { background: var(--tc-blue) !important; }
+  .navbar-brand { font-weight: 700; font-size: 1.1rem; letter-spacing: .5px; }
+  .badge-fetched { background: rgba(255,255,255,.18); font-size: .72rem; }
+
+  /* Summary cards */
+  .stat-card {
+    border: none; border-radius: 12px; position: relative; overflow: hidden;
+    background: var(--bg-card);
+    box-shadow: var(--card-shadow);
+    transition: box-shadow .2s, transform .15s, background .25s, border-left-width .15s;
+    cursor: pointer;
+  }
+  .stat-card:hover { box-shadow: 0 8px 24px rgba(0,25,66,.18); transform: translateY(-3px); }
+  .stat-card:hover .click-hint { opacity: 1; transform: translateX(3px); }
+  .stat-card.active-section {
+    background: var(--tc-light) !important;
+    box-shadow: 0 6px 24px rgba(47,91,148,.28) !important;
+    transform: translateY(-4px);
+    border-left-width: 7px !important;
+  }
+  [data-theme="dark"] .stat-card.active-section {
+    background: rgba(255,255,255,0.08) !important;
+    border-left-width: 7px !important;
+    box-shadow:
+      0 0 0 1.5px rgba(255,255,255,0.45),
+      0 0 0 4px rgba(255,255,255,0.07),
+      0 12px 40px rgba(0,0,0,.65) !important;
+    transform: translateY(-6px);
+  }
+  /* Dark mode: vivid card value & icon colors */
+  [data-theme="dark"] .card-wb .value,
+  [data-theme="dark"] .card-wb .icon    { color: #80bfff !important; }
+  [data-theme="dark"] .card-flows .value,
+  [data-theme="dark"] .card-flows .icon { color: #90aaff !important; }
+  [data-theme="dark"] .card-ds .value,
+  [data-theme="dark"] .card-ds .icon    { color: #40ccff !important; }
+  [data-theme="dark"] .card-views .value,
+  [data-theme="dark"] .card-views .icon { color: #3de87a !important; }
+  [data-theme="dark"] .card-users .value,
+  [data-theme="dark"] .card-users .icon { color: #80bfff !important; }
+  [data-theme="dark"] .card-warn .value,
+  [data-theme="dark"] .card-warn .icon  { color: #ff7070 !important; }
+  [data-theme="dark"] .stat-card .label { color: #8cb8d8 !important; }
+  [data-theme="dark"] .stat-card .click-hint { color: #80bfff; }
+  .stat-card .icon { font-size: 2rem; opacity: .85; }
+  .stat-card .value { font-size: 2rem; font-weight: 700; }
+  .stat-card .label { font-size: .8rem; color: var(--text-muted2); }
+  .stat-card .click-hint {
+    position: absolute; bottom: 7px; right: 10px;
+    font-size: 0.68rem; color: var(--tc-mid); opacity: 0;
+    transition: opacity .15s, transform .15s;
+  }
+
+  .card-wb    { border-left: 5px solid var(--tc-mid); }
+  .card-ds    { border-left: 5px solid var(--tc-sky); }
+  .card-views { border-left: 5px solid #27ae60; }
+  .card-users { border-left: 5px solid var(--tc-blue); }
+  .card-warn  { border-left: 5px solid var(--tc-red); }
+  .card-flows { border-left: 5px solid #4472c4; }
+
+  /* Alert banner */
+  #alert-bar { display:none; }
+
+  /* Tabs */
+  .nav-tabs .nav-link { color: var(--tc-mid); font-weight: 500; }
+  .nav-tabs .nav-link.active { color: #fff; background: var(--tc-mid); border-color: var(--tc-mid); }
+  [data-theme="dark"] .nav-tabs { border-color: var(--border-subtle); }
+  [data-theme="dark"] .nav-tabs .nav-link { color: #7eaee8; border-color: transparent; }
+  [data-theme="dark"] .nav-tabs .nav-link.active { color: #fff; background: var(--tc-mid); border-color: var(--tc-mid); }
+
+  /* Tables */
+  .table thead th { background: var(--bg-table-head); color: #fff; white-space: nowrap; }
+  .table-hover tbody tr:hover { background: var(--bg-row-hover); }
+  [data-theme="dark"] .table {
+    --bs-table-bg: var(--bg-card);
+    --bs-table-striped-bg: var(--bg-detail);
+    --bs-table-hover-bg: var(--bg-row-hover);
+    --bs-table-color: var(--text-body);
+    --bs-table-border-color: var(--border-subtle);
+    color: var(--text-body); border-color: var(--border-subtle);
+  }
+  [data-theme="dark"] .table > :not(caption) > * > * {
+    background-color: var(--bg-card) !important;
+    color: var(--text-body) !important;
+    border-color: var(--border-subtle) !important;
+  }
+  [data-theme="dark"] .table-hover > tbody > tr:hover > * { background-color: var(--bg-row-hover) !important; }
+  [data-theme="dark"] .card { background: var(--bg-card); border-color: var(--border-subtle); color: var(--text-body); }
+  [data-theme="dark"] .card-body { color: var(--text-body); }
+  [data-theme="dark"] .form-select, [data-theme="dark"] .form-control {
+    background: #1e2a42; color: var(--text-body); border-color: var(--border-subtle);
+  }
+  [data-theme="dark"] .text-muted { color: var(--text-muted2) !important; }
+  [data-theme="dark"] .text-secondary { color: var(--text-secondary2) !important; }
+  [data-theme="dark"] .badge.bg-secondary { background: #3a4d6a !important; color: #fff !important; }
+  [data-theme="dark"] code { color: var(--text-muted2); background: transparent; }
+  [data-theme="dark"] .fw-semibold, [data-theme="dark"] .fw-bold { color: var(--text-body); }
+  [data-theme="dark"] small { color: var(--text-muted2); }
+  /* 詳細パネル内のテキスト */
+  [data-theme="dark"] .wb-detail-panel { color: var(--text-body); }
+  [data-theme="dark"] .wb-detail-panel .text-secondary,
+  [data-theme="dark"] .wb-detail-panel .text-muted { color: var(--text-muted2) !important; }
+  /* DataTables wrapper — padding & spacing */
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter  { padding: 6px 8px 4px; }
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate { padding: 6px 8px; }
+  [data-theme="dark"] .dataTables_wrapper { color: var(--text-body); }
+  [data-theme="dark"] .dataTables_wrapper select,
+  [data-theme="dark"] .dataTables_wrapper input {
+    background: #1e2a42; color: var(--text-body); border-color: var(--border-subtle);
+  }
+  [data-theme="dark"] .page-item .page-link { background: #1a2540; color: #7eaee8; border-color: var(--border-subtle); }
+  [data-theme="dark"] .page-item.active .page-link { background: var(--tc-mid); color: #fff; }
+
+  /* Badges */
+  .badge-certified { background: #d4edda; color: #155724; }
+  .badge-uncert    { background: #f2f2f2; color: #666; }
+  .badge-stale     { background: #fde8e8; color: #b71c1c; }
+  .badge-fresh     { background: #d4edda; color: #155724; }
+  .badge-fail      { background: #fde8e8; color: #b71c1c; }
+  .badge-ok        { background: #d4edda; color: #155724; }
+
+  /* Loading overlay */
+  #loading-overlay {
+    position:fixed; inset:0; background:rgba(255,255,255,.85);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:9999;
+  }
+  .spinner-tc { width:3rem; height:3rem; border-width:.35rem;
+    border-color: var(--tc-blue) transparent var(--tc-blue) transparent; }
+
+  /* Top-views mini chart */
+  .bar-wrap { background:#e9ecef; border-radius:4px; height:12px; }
+  .bar-fill  { background: var(--tc-mid); border-radius:4px; height:100%; transition:width .4s; }
+
+  /* Responsive tweaks */
+  @media(max-width:768px){ .stat-card .value { font-size:1.4rem; } }
+
+  /* Workbook row expansion */
+  .wb-data-row { cursor: pointer; user-select: none; }
+  .wb-expand-icon {
+    display: inline-block; width: 1em; text-align: center;
+    font-size: 0.65rem; color: #ccc; transition: color .15s;
+  }
+  .wb-data-row:hover .wb-expand-icon,
+  .wb-row-open > td:first-child .wb-expand-icon { color: var(--tc-mid); }
+  .wb-detail-panel { background: var(--bg-detail); border-top: 3px solid var(--tc-mid); }
+  .wb-detail-fields { max-height: 220px; overflow-y: auto; }
+  tr.wb-row-open > td { background: var(--bg-detail-row) !important; }
+  [data-theme="dark"] .wb-expand-icon { color: #3a4d6a; }
+
+  /* Dark mode loading overlay */
+  [data-theme="dark"] #loading-overlay { background: rgba(10,15,30,.9); }
+  [data-theme="dark"] #loading-msg { color: var(--text-muted2); }
+
+  /* Sankey tooltip (theme-aware via CSS class) */
+  .sankey-tooltip {
+    position: absolute;
+    background: rgba(255,255,255,0.97);
+    color: #222;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    white-space: pre-wrap;
+    max-width: 360px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    z-index: 100;
+  }
+  [data-theme="dark"] .sankey-tooltip {
+    background: rgba(14,24,48,0.97);
+    color: #dce8ff;
+    border-color: rgba(80,140,220,0.35);
+    box-shadow: 0 4px 20px rgba(0,0,0,.6);
+  }
+  [data-theme="dark"] .sankey-tooltip hr { border-color: rgba(80,140,220,0.25); }
+  #sankey-container { overflow: visible; }
+
+  /* ── 差分比較タブ ─────────────────────────────── */
+  /* 比較メタ情報バー */
+  .diff-meta-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px; padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .diff-meta-bar .diff-badge-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .diff-stat-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .82rem; font-weight: 600;
+    border-radius: 20px; padding: 4px 12px;
+  }
+  .diff-stat-badge.new     { background: #d4f0da; color: #1a5c2a; }
+  .diff-stat-badge.changed { background: #fff3cd; color: #7a5800; }
+  .diff-stat-badge.deleted { background: #fde8e8; color: #8b1a1a; }
+  [data-theme="dark"] .diff-stat-badge.new     { background: #0d3320; color: #4de87a; }
+  [data-theme="dark"] .diff-stat-badge.changed { background: #3a2e00; color: #ffd55e; }
+  [data-theme="dark"] .diff-stat-badge.deleted { background: #3a0a0a; color: #ff8080; }
+
+  /* 差分セクション (新規 / 更新 / 削除) */
+  .diff-section {
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    margin-bottom: 12px;
+  }
+  .diff-section-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; cursor: pointer;
+    font-weight: 600; font-size: .9rem;
+    user-select: none;
+    transition: background .15s;
+  }
+  .diff-section-header:hover { filter: brightness(0.97); }
+  .diff-section.new-section     .diff-section-header { background: #edfaf1; color: #1a5c2a; }
+  .diff-section.changed-section .diff-section-header { background: #fffbec; color: #7a5800; }
+  .diff-section.deleted-section .diff-section-header { background: #fff5f5; color: #8b1a1a; }
+  [data-theme="dark"] .diff-section.new-section     .diff-section-header { background: #0d2a1a; color: #4de87a; }
+  [data-theme="dark"] .diff-section.changed-section .diff-section-header { background: #2a2000; color: #ffd55e; }
+  [data-theme="dark"] .diff-section.deleted-section .diff-section-header { background: #2a0808; color: #ff8080; }
+  .diff-section-header .diff-count {
+    margin-left: auto; font-size: .75rem; font-weight: 700;
+    background: rgba(0,0,0,.08); border-radius: 12px; padding: 2px 9px;
+  }
+  [data-theme="dark"] .diff-section-header .diff-count { background: rgba(255,255,255,.1); }
+  .diff-section-chevron { font-size: .8rem; transition: transform .2s; }
+  .diff-section-header.collapsed .diff-section-chevron { transform: rotate(-90deg); }
+
+  /* カテゴリ (ワークブック / データソース / Prepフロー) */
+  .diff-body { background: var(--bg-card); }
+  .diff-category { border-top: 1px solid var(--border-subtle); }
+  .diff-category-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 20px; font-size: .82rem; font-weight: 600;
+    color: var(--text-secondary2); cursor: pointer;
+    background: var(--bg-detail);
+  }
+  .diff-category-header .diff-cat-count {
+    margin-left: auto; font-size: .72rem;
+    background: var(--border-subtle); color: var(--text-muted2);
+    border-radius: 10px; padding: 1px 7px;
+  }
+
+  /* 個別アイテム — 縦積みレイアウト */
+  .diff-item-list { padding: 4px 0; }
+  .diff-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 24px 10px 32px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .diff-item:last-child { border-bottom: none; }
+  .diff-item-icon { flex-shrink: 0; margin-top: 2px; font-size: .95rem; }
+
+  /* アイテム本体（縦積み） */
+  .diff-item-content { flex: 1; min-width: 0; }
+  .diff-item-name { font-weight: 600; font-size: .86rem; word-break: break-word; }
+  .diff-item-sub {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 3px; font-size: .74rem; color: var(--text-muted2);
+  }
+  .diff-item-sub span { display: flex; align-items: center; gap: 3px; }
+
+  /* 変更詳細テーブル（更新アイテムのみ） */
+  .diff-item-changes {
+    margin-top: 8px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px; overflow: hidden;
+    font-size: .78rem;
+  }
+  .diff-change-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 18px 1fr;
+    align-items: center; gap: 4px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-detail);
+  }
+  .diff-change-row:last-child { border-bottom: none; }
+  .diff-change-field {
+    font-size: .72rem; font-weight: 600;
+    color: var(--text-muted2); white-space: nowrap;
+  }
+  .diff-change-before {
+    color: #b71c1c; text-decoration: line-through;
+    word-break: break-all; font-size: .76rem;
+  }
+  .diff-change-arrow { text-align: center; color: var(--text-muted2); font-size: .8rem; }
+  .diff-change-after {
+    color: #1a7a38; font-weight: 600;
+    word-break: break-all; font-size: .76rem;
+  }
+  [data-theme="dark"] .diff-change-before { color: #ff8080; }
+  [data-theme="dark"] .diff-change-after  { color: #4de87a; }
+  [data-theme="dark"] .diff-change-row    { background: var(--bg-detail); }
+
+  /* 空状態 */
+  .diff-empty { text-align: center; padding: 32px 0; color: var(--text-muted2); }
+  /* 差分タブ未準備状態 */
+  .diff-no-data { text-align: center; padding: 48px 16px; color: var(--text-muted2); }
+</style>
+</head>
+<body>
+
+<!-- ── Navbar ───────────────────────────────────────────── -->
+<nav class="navbar navbar-dark px-3 py-2">
+  <span class="navbar-brand">
+    <i class="bi bi-bar-chart-fill me-2"></i>Tableau Cloud Manager
+  </span>
+  <div class="d-flex align-items-center gap-2">
+    <span id="fetched-label" class="badge badge-fetched text-white"></span>
+    <button class="btn btn-sm btn-outline-light px-2" onclick="toggleLang()" id="btn-lang" title="Switch language / 言語切替" style="font-size:0.75rem;min-width:2.8rem">
+      <span id="lang-label">EN</span>
+    </button>
+    <button class="btn btn-sm btn-outline-light px-2" onclick="toggleDarkMode()" id="btn-dark" title="ダーク/ライトモード切替">
+      <i class="bi bi-moon-fill" id="dark-icon" style="font-size:0.85rem"></i>
+    </button>
+    <a href="/static/help.html" target="_blank" class="btn btn-sm btn-outline-light px-2" title="使い方ガイド">
+      <i class="bi bi-question-circle" style="font-size:0.85rem"></i>
+    </a>
+    <button id="btn-refresh" class="btn btn-sm btn-outline-light" onclick="triggerRefresh()">
+      <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="refresh">更新</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── Loading overlay ─────────────────────────────────── -->
+<div id="loading-overlay">
+  <div class="spinner-border spinner-tc text-primary mb-3"></div>
+  <div class="text-secondary fw-semibold" id="loading-msg">Tableau Cloud からデータを取得中...</div>
+</div>
+
+<!-- ── Alert bar ───────────────────────────────────────── -->
+<div id="alert-bar" class="alert alert-danger m-3 mb-0 py-2">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <span id="alert-msg"></span>
+</div>
+
+<!-- ── Main content ────────────────────────────────────── -->
+<div id="main-content" class="container-fluid px-3 pt-3 pb-5" style="display:none">
+
+  <!-- Summary cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-wb" class="stat-card card-wb card p-3 h-100" onclick="switchToSection('wb')" title="クリックしてワークブック一覧を表示">
+        <div class="icon" style="color:#2F5B94"><i class="bi bi-journal-richtext"></i></div>
+        <div class="value" style="color:#2F5B94" id="s-wb">—</div>
+        <div class="label" data-i18n="lbl_wb">ワークブック</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-flows" class="stat-card card-flows card p-3 h-100" onclick="switchToSection('flows')" title="クリックしてPrepフロー一覧を表示">
+        <div class="icon" style="color:#4472c4"><i class="bi bi-diagram-2-fill"></i></div>
+        <div class="value" style="color:#4472c4" id="s-flows">—</div>
+        <div class="label" data-i18n="lbl_flows">Prepフロー</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-ds" class="stat-card card-ds card p-3 h-100" onclick="switchToSection('ds')" title="クリックしてデータソース一覧を表示">
+        <div class="icon" style="color:#4C9AED"><i class="bi bi-database-fill"></i></div>
+        <div class="value" style="color:#4C9AED" id="s-ds">—</div>
+        <div class="label" data-i18n="lbl_ds">データソース</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-views" class="stat-card card-views card p-3 h-100" onclick="switchToSection('views')" title="クリックしてビュー一覧を表示">
+        <div class="icon" style="color:#27ae60"><i class="bi bi-eye-fill"></i></div>
+        <div class="value" style="color:#27ae60" id="s-views">—</div>
+        <div class="label" data-i18n="lbl_views">ビュー（合計）</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-users" class="stat-card card-users card p-3 h-100" onclick="switchToSection('users')" title="クリックしてユーザー一覧を表示">
+        <div class="icon" style="color:#2F5B94"><i class="bi bi-people-fill"></i></div>
+        <div class="value" style="color:#2F5B94" id="s-users">—</div>
+        <div class="label" data-i18n="lbl_users">ユーザー</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-stale" class="stat-card card-warn card p-3 h-100" onclick="switchToSection('wb')" title="クリックしてワークブック一覧を表示">
+        <div class="icon" style="color:#EC4B4B"><i class="bi bi-clock-history"></i></div>
+        <div class="value" style="color:#EC4B4B" id="s-stale">—</div>
+        <div class="label" data-i18n="lbl_stale">180日以上未閲覧</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-inactive" class="stat-card card-warn card p-3 h-100" onclick="switchToSection('users')" title="クリックしてユーザー一覧を表示">
+        <div class="icon" style="color:#EC4B4B"><i class="bi bi-person-slash"></i></div>
+        <div class="value" style="color:#EC4B4B" id="s-inactive">—</div>
+        <div class="label" data-i18n="lbl_inactive">90日以上未ログイン</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visible tabs: スケジュール管理・Top ビュー・計算フィールド分析・差分比較 -->
+  <ul class="nav nav-tabs mb-3" id="mainTab">
+    <li class="nav-item"><a class="nav-link" href="#" onclick="event.preventDefault();switchToSection('schedules')">
+      <i class="bi bi-calendar-check me-1"></i><span data-i18n="nav_schedules">スケジュール管理</span></a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="event.preventDefault();switchToSection('topviews')">
+      <i class="bi bi-trophy me-1"></i><span data-i18n="nav_topviews">Top ビュー</span></a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="event.preventDefault();switchToSection('fields')">
+      <i class="bi bi-diagram-3 me-1"></i><span data-i18n="nav_fields">計算フィールド分析</span></a></li>
+    <li class="nav-item"><a class="nav-link" href="#" id="nav-diff" onclick="event.preventDefault();switchToSection('diff')">
+      <i class="bi bi-git me-1"></i><span data-i18n="nav_diff">差分比較</span>
+      <span id="diff-nav-badge" class="badge ms-1 py-0 px-1" style="font-size:.65rem;display:none"></span>
+    </a></li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ── Workbooks ──────────────────────────────── -->
+    <div class="tab-pane fade show active" id="tab-wb">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-2">
+          <table id="tbl-wb" class="table table-sm table-hover w-100">
+            <thead><tr>
+              <th data-i18n="th_wb_name">ワークブック名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
+              <th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_unviewed">未閲覧日数</th><th data-i18n="th_size">サイズ (MB)</th><th data-i18n="th_tags">タグ</th><th data-i18n="th_link">リンク</th>
+            </tr></thead>
+            <tbody id="body-wb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Data Sources ───────────────────────────── -->
+    <div class="tab-pane fade" id="tab-ds">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-2">
+          <table id="tbl-ds" class="table table-sm table-hover w-100">
+            <thead><tr>
+              <th data-i18n="th_ds_name">データソース名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
+              <th data-i18n="th_type">タイプ</th><th data-i18n="th_certified">認定</th><th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th>
+            </tr></thead>
+            <tbody id="body-ds"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Views ─────────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-views">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-2">
+          <table id="tbl-views" class="table table-sm table-hover w-100">
+            <thead><tr>
+              <th data-i18n="th_view_name">ビュー名</th><th data-i18n="th_workbook">ワークブック</th><th data-i18n="th_owner">オーナー</th>
+              <th data-i18n="th_total_views">累計ビュー数</th><th data-i18n="th_last_viewed">最終閲覧日</th><th data-i18n="th_days_stale">経過日数</th>
+            </tr></thead>
+            <tbody id="body-views"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Users ─────────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-users">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-2">
+          <table id="tbl-users" class="table table-sm table-hover w-100">
+            <thead><tr>
+              <th data-i18n="th_name">名前</th><th data-i18n="th_email">メール</th><th data-i18n="th_license">ライセンス</th>
+              <th data-i18n="th_last_login">最終ログイン</th><th data-i18n="th_days_inactive">未ログイン日数</th>
+            </tr></thead>
+            <tbody id="body-users"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Prep Flows ────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-flows">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-2">
+          <table id="tbl-flows" class="table table-sm table-hover w-100">
+            <thead><tr>
+              <th data-i18n="th_flow_name">フロー名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
+              <th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_last_run">最終実行日</th><th data-i18n="th_tags">タグ</th>
+            </tr></thead>
+            <tbody id="body-flows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Schedules ─────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-schedules">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-2">
+          <table id="tbl-schedules" class="table table-sm table-hover w-100">
+            <thead><tr>
+              <th data-i18n="th_target">対象</th><th data-i18n="th_type">タイプ</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
+              <th data-i18n="th_refresh_type">更新種別</th><th data-i18n="th_frequency">頻度</th><th data-i18n="th_next_run">次回実行</th>
+            </tr></thead>
+            <tbody id="body-schedules"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Top Views ──────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-topviews">
+      <div class="card border-0 shadow-sm p-3">
+        <h6 class="fw-bold mb-3 text-primary" data-i18n="top_views_title">Top 10 ビュー（累計ビュー数）</h6>
+        <div id="top-views-chart"></div>
+      </div>
+    </div>
+
+    <!-- ── Field Analysis ────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-fields">
+      <div class="card border-0 shadow-sm p-3">
+
+        <!-- コントロール行 -->
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <label class="fw-bold mb-0" data-i18n="lbl_workbook_select">ワークブック:</label>
+          <select id="wb-select-fields" class="form-select form-select-sm w-auto">
+            <option value="">-- 選択してください --</option>
+          </select>
+          <button id="btn-analyze" class="btn btn-sm btn-primary" onclick="analyzeWorkbook()">
+            <i class="bi bi-search me-1"></i><span data-i18n="btn_analyze">計算フィールドを分析</span>
+          </button>
+          <small class="text-muted" data-i18n="analyze_hint">※ 初回はワークブックのダウンロードに数秒かかります</small>
+        </div>
+
+        <!-- ローディング -->
+        <div id="fields-loading" class="text-center py-5" style="display:none">
+          <div class="spinner-border text-primary mb-2"></div>
+          <div class="text-secondary">ワークブックを解析中...</div>
+        </div>
+
+        <!-- 結果エリア -->
+        <div id="fields-result" style="display:none">
+
+          <!-- データソース接続情報 -->
+          <div id="ds-info-area" class="mb-3"></div>
+
+          <!-- 計算フィールド一覧 -->
+          <div class="mb-4">
+            <h6 class="fw-bold text-primary mb-2">
+              <i class="bi bi-table me-1"></i><span data-i18n="fields_list">計算フィールド一覧</span>
+            </h6>
+            <table id="tbl-fields" class="table table-sm table-hover w-100">
+              <thead><tr>
+                <th data-i18n="th_datasource">データソース</th>
+                <th data-i18n="th_fieldname">フィールド名</th>
+                <th data-i18n="th_formula">計算式（抜粋）</th>
+              </tr></thead>
+              <tbody id="body-fields"></tbody>
+            </table>
+          </div>
+
+          <!-- Sankey 依存関係図 -->
+          <div>
+            <h6 class="fw-bold text-primary mb-2">
+              <i class="bi bi-share me-1"></i><span data-i18n="fields_sankey">フィールド依存関係図</span>
+            </h6>
+            <p class="text-muted small mb-2" data-i18n="fields_sankey_hint">
+              ノード色はデータソース別。リンクにホバーすると計算式を確認できます。
+            </p>
+            <div id="sankey-container" style="position:relative; width:100%; min-height:520px;"></div>
+          </div>
+        </div>
+
+        <!-- 空状態 -->
+        <div id="fields-empty" class="text-center py-5 text-muted" style="display:none">
+          <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+          計算フィールドが見つかりませんでした
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── 差分比較タブ ─────────────────────────── -->
+    <div class="tab-pane fade" id="tab-diff">
+      <div class="card border-0 shadow-sm p-3">
+        <div id="diff-content">
+          <!-- JS で動的に生成 -->
+          <div class="diff-no-data">
+            <i class="bi bi-git fs-1 d-block mb-3 opacity-25"></i>
+            <div data-i18n="diff_no_snapshot_hint">更新ボタンを押すと、次回以降に差分を確認できます。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- tab-content -->
+</div><!-- main-content -->
+
+<!-- Scripts -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ============================================================
+// ユーティリティ
+// ============================================================
+
+/** HTML 特殊文字をエスケープして XSS を防ぐ */
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** fetch + HTTPエラーチェック + JSON パース */
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status} (${url})`);
+  return r.json();
+}
+
+// ============================================================
+// 国際化 (i18n)
+// ============================================================
+window._lang = localStorage.getItem('tcm_lang') || 'ja';
+
+const I18N = {
+  ja: {
+    refresh: '更新',
+    lbl_wb: 'ワークブック', lbl_flows: 'Prepフロー', lbl_ds: 'データソース',
+    lbl_views: 'ビュー（合計）', lbl_users: 'ユーザー',
+    lbl_stale: '180日以上未閲覧', lbl_inactive: '90日以上未ログイン',
+    nav_schedules: 'スケジュール管理', nav_topviews: 'Top ビュー', nav_fields: '計算フィールド分析',
+    fields_list: '計算フィールド一覧', fields_sankey: 'フィールド依存関係図',
+    fields_sankey_hint: 'ノード色はデータソース別。リンクにホバーすると計算式を確認できます。',
+    th_datasource: 'データソース', th_fieldname: 'フィールド名', th_formula: '計算式（抜粋）',
+    top_views_title: 'Top 10 ビュー（累計ビュー数）',
+    lbl_workbook_select: 'ワークブック:', btn_analyze: '計算フィールドを分析',
+    analyze_hint: '※ 初回はワークブックのダウンロードに数秒かかります',
+    // Table headers
+    th_wb_name: 'ワークブック名', th_project: 'プロジェクト', th_owner: 'オーナー',
+    th_last_updated: '最終更新', th_days_unviewed: '未閲覧日数',
+    th_size: 'サイズ (MB)', th_tags: 'タグ', th_link: 'リンク',
+    th_ds_name: 'データソース名', th_type: 'タイプ', th_certified: '認定',
+    th_days_stale: '経過日数',
+    th_view_name: 'ビュー名', th_workbook: 'ワークブック',
+    th_total_views: '累計ビュー数', th_last_viewed: '最終閲覧日',
+    th_name: '名前', th_email: 'メール', th_license: 'ライセンス',
+    th_last_login: '最終ログイン', th_days_inactive: '未ログイン日数',
+    th_flow_name: 'フロー名', th_last_run: '最終実行日',
+    th_target: '対象', th_refresh_type: '更新種別',
+    th_frequency: '頻度', th_next_run: '次回実行',
+    nav_diff: '差分比較',
+    diff_no_snapshot_hint: '更新ボタンを押すと、次回以降に差分を確認できます。',
+    diff_compared_to: '前回比較:',
+    diff_new_section: '🟢 新規追加', diff_changed_section: '🟡 更新', diff_deleted_section: '🔴 削除',
+    diff_cat_wb: 'ワークブック', diff_cat_wb_content: 'ワークブック（シート変更）',
+    diff_cat_ktw: '計算フィールド [KTW監視]',
+    diff_cat_ds: 'データソース', diff_cat_flow: 'Prepフロー', diff_cat_user: 'ユーザー',
+    diff_no_changes: '変更なし',
+    diff_item_name_changed: '名前変更',
+    diff_item_updated: '最終更新日が変わりました',
+    diff_item_size_changed: 'サイズ変更',
+    diff_item_cert_changed: '認定状態変更',
+    diff_item_role_changed: 'ライセンス変更',
+    diff_item_login_changed: '最終ログイン更新',
+  },
+  en: {
+    refresh: 'Refresh',
+    lbl_wb: 'Workbooks', lbl_flows: 'Prep Flows', lbl_ds: 'Data Sources',
+    lbl_views: 'Views (Total)', lbl_users: 'Users',
+    lbl_stale: 'Not Viewed 180+ Days', lbl_inactive: 'Inactive 90+ Days',
+    nav_schedules: 'Schedules', nav_topviews: 'Top Views', nav_fields: 'Calculated Fields',
+    fields_list: 'Calculated Field List', fields_sankey: 'Field Dependency Diagram',
+    fields_sankey_hint: 'Node colors are per data source. Hover over links to see formulas.',
+    th_datasource: 'Data Source', th_fieldname: 'Field Name', th_formula: 'Formula (preview)',
+    top_views_title: 'Top 10 Views (Total Views)',
+    lbl_workbook_select: 'Workbook:', btn_analyze: 'Analyze Fields',
+    analyze_hint: '※ First run may take a few seconds to download the workbook.',
+    // Table headers
+    th_wb_name: 'Workbook', th_project: 'Project', th_owner: 'Owner',
+    th_last_updated: 'Last Updated', th_days_unviewed: 'Days Unviewed',
+    th_size: 'Size (MB)', th_tags: 'Tags', th_link: 'Link',
+    th_ds_name: 'Data Source', th_type: 'Type', th_certified: 'Certified',
+    th_days_stale: 'Days Stale',
+    th_view_name: 'View Name', th_workbook: 'Workbook',
+    th_total_views: 'Total Views', th_last_viewed: 'Last Viewed',
+    th_name: 'Name', th_email: 'Email', th_license: 'License',
+    th_last_login: 'Last Login', th_days_inactive: 'Days Inactive',
+    th_flow_name: 'Flow Name', th_last_run: 'Last Run',
+    th_target: 'Target', th_refresh_type: 'Refresh Type',
+    th_frequency: 'Frequency', th_next_run: 'Next Run',
+    nav_diff: 'Changes',
+    diff_no_snapshot_hint: 'Click Refresh to start tracking changes.',
+    diff_compared_to: 'Compared to:',
+    diff_new_section: '🟢 New', diff_changed_section: '🟡 Updated', diff_deleted_section: '🔴 Deleted',
+    diff_cat_wb: 'Workbooks', diff_cat_wb_content: 'Workbooks (Sheet Changes)',
+    diff_cat_ktw: 'Calc Fields [KTW Watch]',
+    diff_cat_ds: 'Data Sources', diff_cat_flow: 'Prep Flows', diff_cat_user: 'Users',
+    diff_no_changes: 'No changes',
+    diff_item_name_changed: 'Name changed',
+    diff_item_updated: 'Updated at changed',
+    diff_item_size_changed: 'Size changed',
+    diff_item_cert_changed: 'Certification changed',
+    diff_item_role_changed: 'License changed',
+    diff_item_login_changed: 'Last login updated',
+  },
+};
+
+function applyLang(lang) {
+  window._lang = lang;
+  localStorage.setItem('tcm_lang', lang);
+  const t = I18N[lang] || I18N.ja;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (t[key] !== undefined) el.textContent = t[key];
+  });
+  document.getElementById('lang-label').textContent = lang === 'ja' ? 'EN' : 'JA';
+  document.documentElement.lang = lang;
+
+  // DataTables が初期化済みであれば再レンダリングして言語を反映
+  if (window._allData) {
+    const d = window._allData;
+    renderWorkbooks(d.wb);
+    renderDatasources(d.ds);
+    renderViews(d.views);
+    renderUsers(d.users);
+    renderSchedules(d.schedules);
+    renderFlows(d.flows);
+  }
+}
+
+function toggleLang() {
+  applyLang(window._lang === 'ja' ? 'en' : 'ja');
+}
+
+// ============================================================
+// ダーク/ライトモード
+// ============================================================
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('tcm_theme', theme);
+  const icon = document.getElementById('dark-icon');
+  if (icon) {
+    icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+  }
+}
+
+function toggleDarkMode() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// 起動時に保存済みテーマ・言語を適用
+(function initPrefs() {
+  const savedTheme = localStorage.getItem('tcm_theme') || 'light';
+  applyTheme(savedTheme);
+  const savedLang = localStorage.getItem('tcm_lang') || 'ja';
+  if (savedLang !== 'ja') applyLang(savedLang);
+})();
+
+// ============================================================
+// 差分比較タブ
+// ============================================================
+// tcm_snap_cur  = 今回ロードしたデータ（次回比較のベース）
+// tcm_snap_prev = 前回ロードしたデータ（今回の比較対象）
+const SNAP_CUR_KEY  = 'tcm_snap_cur';
+const SNAP_PREV_KEY = 'tcm_snap_prev';
+
+// KTW計算フィールド用スナップショットキー
+const KTW_CUR_KEY  = 'tcm_ktw_cur';
+const KTW_PREV_KEY = 'tcm_ktw_prev';
+
+function rotateKtwSnapshot(data) {
+  try {
+    const cur = localStorage.getItem(KTW_CUR_KEY);
+    if (cur) localStorage.setItem(KTW_PREV_KEY, cur);
+    localStorage.setItem(KTW_CUR_KEY, JSON.stringify({ ts: Date.now(), wbs: data }));
+  } catch(e) { console.warn('ktw snapshot save failed:', e); }
+}
+
+function loadKtwSnapshot() {
+  try {
+    const raw = localStorage.getItem(KTW_PREV_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+/** KTW計算フィールドの差分を計算する */
+function computeKtwDiff(curWbs, prevWbs) {
+  const prevMap = Object.fromEntries(prevWbs.map(wb => [wb.id, wb]));
+  const result = [];
+  for (const cur of curWbs) {
+    const prev = prevMap[cur.id];
+    if (!prev) continue; // 新規WBはWB差分側で表示
+    const key = f => `${f.datasource}::${f.field}`;
+    const prevFields = Object.fromEntries(prev.fields.map(f => [key(f), f]));
+    const curFields  = Object.fromEntries(cur.fields.map(f => [key(f), f]));
+    const added   = cur.fields.filter(f => !prevFields[key(f)]);
+    const deleted = prev.fields.filter(f => !curFields[key(f)]);
+    const changed = cur.fields
+      .filter(f => prevFields[key(f)] && prevFields[key(f)].formula !== f.formula)
+      .map(f => ({ field: f, prevFormula: prevFields[key(f)].formula }));
+    if (added.length || deleted.length || changed.length) {
+      result.push({ id: cur.id, name: cur.name, added, deleted, changed });
+    }
+  }
+  return result;
+}
+
+/** KTWタグ付きWBの計算フィールドを非同期でスキャンし、diff tabを更新する */
+async function fetchKtwFields() {
+  try {
+    const data = await fetchJSON('/api/ktw-fields');
+    rotateKtwSnapshot(data);
+    const ktwSnap = loadKtwSnapshot();
+    window._ktwDiff = ktwSnap ? computeKtwDiff(data, ktwSnap.wbs || []) : [];
+    renderDiffTab(loadSnapshot());
+  } catch(e) {
+    console.warn('KTW scan failed:', e);
+  }
+}
+
+/** スナップショットをローテーション: cur→prev, 今回データ→cur */
+function rotateSnapshot(data) {
+  try {
+    const cur = localStorage.getItem(SNAP_CUR_KEY);
+    if (cur) localStorage.setItem(SNAP_PREV_KEY, cur);
+    const snap = {
+      ts: Date.now(),
+      wb:    data.wb.map(r    => ({ id: r.id, name: r.name, project: r.project, owner: r.owner })),
+      ds:    data.ds.map(r    => ({ id: r.id, name: r.name, project: r.project, owner: r.owner, certified: r.certified })),
+      flows: data.flows.map(r => ({ id: r.id, name: r.name, project: r.project, owner: r.owner })),
+      users: data.users.map(r => ({ id: r.id, name: r.name, email: r.email, site_role: r.site_role })),
+      views: data.views.map(r => ({ id: r.id, name: r.name, workbook_id: r.workbook_id, workbook_name: r.workbook_name || '' })),
+    };
+    localStorage.setItem(SNAP_CUR_KEY, JSON.stringify(snap));
+  } catch(e) { console.warn('snapshot save failed:', e); }
+}
+
+/** 比較対象スナップショット（前回ロード分）を読み込む */
+function loadSnapshot() {
+  try {
+    const raw = localStorage.getItem(SNAP_PREV_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+/**
+ * 差分を計算する
+ * @returns {Object} { added: Array<current-item>, changed: Array<{cur,prev}>, deleted: Array<prev-item> }
+ */
+function computeDiff(current, prev, compareFields) {
+  const prevMap = Object.fromEntries(prev.map(r => [r.id, r]));
+  const currMap = Object.fromEntries(current.map(r => [r.id, r]));
+  const added   = current.filter(r => !prevMap[r.id]);
+  const deleted = prev.filter(r => !currMap[r.id]);
+  const changed = [];
+  for (const r of current) {
+    if (!prevMap[r.id]) continue;
+    const p = prevMap[r.id];
+    const changedFields = compareFields.filter(f => String(r[f] ?? '') !== String(p[f] ?? ''));
+    if (changedFields.length) changed.push({ cur: r, prev: p, changedFields });
+  }
+  return { added, changed, deleted };
+}
+
+/** 変更フィールドを「ラベル | 旧値 → 新値」のグリッド行HTMLに変換 */
+function buildChangeRows(changedFields, cur, prev) {
+  const lang = window._lang || 'ja';
+  const FIELD_LABELS = {
+    ja: {
+      name: '名前', project: 'プロジェクト', owner: 'オーナー',
+      updated_at: '最終更新日', size_mb: 'サイズ',
+      certified: '認定状態', site_role: 'ライセンス',
+      last_login: '最終ログイン', email: 'メール',
+    },
+    en: {
+      name: 'Name', project: 'Project', owner: 'Owner',
+      updated_at: 'Last Updated', size_mb: 'Size',
+      certified: 'Certified', site_role: 'License',
+      last_login: 'Last Login', email: 'Email',
+    },
+  };
+  const labels = FIELD_LABELS[lang] || FIELD_LABELS.ja;
+
+  const fmt = (field, val) => {
+    if (field === 'updated_at' || field === 'last_login') return fmtDate(val) || '—';
+    if (field === 'size_mb')   return (val ?? '—') + ' MB';
+    if (field === 'certified') return val ? (lang === 'ja' ? '認定済み' : 'Certified') : (lang === 'ja' ? '未認定' : 'Not certified');
+    return esc(String(val ?? '—'));
+  };
+
+  return changedFields.map(f => `
+    <div class="diff-change-row">
+      <span class="diff-change-field">${labels[f] || f}</span>
+      <span class="diff-change-before">${fmt(f, prev[f])}</span>
+      <span class="diff-change-arrow">→</span>
+      <span class="diff-change-after">${fmt(f, cur[f])}</span>
+    </div>`).join('');
+}
+
+/** 差分タブ全体を描画 */
+function renderDiffTab(snap) {
+  const d = window._allData;
+  const el = document.getElementById('diff-content');
+  if (!d || !snap) {
+    const t = I18N[window._lang || 'ja'];
+    el.innerHTML = `<div class="diff-no-data"><i class="bi bi-git fs-1 d-block mb-3 opacity-25"></i><div>${t.diff_no_snapshot_hint}</div></div>`;
+    return;
+  }
+
+  const t = I18N[window._lang || 'ja'];
+
+  // 差分計算
+  const wbDiff   = computeDiff(d.wb,    snap.wb    || [], ['name','project','owner']);
+  const dsDiff   = computeDiff(d.ds,    snap.ds    || [], ['name','project','owner','certified']);
+  const flDiff   = computeDiff(d.flows, snap.flows || [], ['name','project','owner']);
+  const usrDiff  = computeDiff(d.users, snap.users || [], ['name','email','site_role']);
+  const viewDiff = computeDiff(d.views, snap.views || [], ['name']);
+
+  // ─ ビュー変更をワークブック単位でグループ化 ─
+  // 新規WB・削除WBのシートは親WBでまとめて見えるため除外
+  const newWbIds = new Set(wbDiff.added.map(r => r.id));
+  const delWbIds = new Set(wbDiff.deleted.map(r => r.id));
+  const wbViewMap = {};
+  const ensureWbEntry = (wbId, wbName) => {
+    const key = wbId || wbName || '?';
+    if (!wbViewMap[key]) wbViewMap[key] = { name: wbName || wbId, added: [], deleted: [], renamed: [] };
+    return wbViewMap[key];
+  };
+  viewDiff.added.filter(v => !newWbIds.has(v.workbook_id))
+    .forEach(v => ensureWbEntry(v.workbook_id, v.workbook_name).added.push(v.name));
+  viewDiff.deleted.filter(v => !delWbIds.has(v.workbook_id))
+    .forEach(v => ensureWbEntry(v.workbook_id, v.workbook_name).deleted.push(v.name));
+  viewDiff.changed
+    .forEach(({ cur, prev }) => ensureWbEntry(cur.workbook_id, cur.workbook_name).renamed.push({ from: prev.name, to: cur.name }));
+  const wbWithViewChanges = Object.values(wbViewMap);
+
+  // 件数集計
+  const ktwChangedLen = (window._ktwDiff || []).length;
+  const totalNew     = wbDiff.added.length   + dsDiff.added.length   + flDiff.added.length   + usrDiff.added.length;
+  const totalChanged = wbDiff.changed.length + dsDiff.changed.length + flDiff.changed.length + usrDiff.changed.length + wbWithViewChanges.length + ktwChangedLen;
+  const totalDeleted = wbDiff.deleted.length + dsDiff.deleted.length + flDiff.deleted.length + usrDiff.deleted.length;
+  const snapDate     = snap.ts ? new Date(snap.ts).toLocaleString('ja-JP') : '—';
+
+  // ナビバッジ更新
+  const navBadge = document.getElementById('diff-nav-badge');
+  const total = totalNew + totalChanged + totalDeleted;
+  if (total > 0) {
+    navBadge.textContent = total;
+    navBadge.style.display = '';
+    navBadge.style.background = '#ffc107';
+    navBadge.style.color = '#000';
+  } else {
+    navBadge.style.display = 'none';
+  }
+
+  // ─ ヘルパー: カテゴリブロックHTMLを生成 ─
+  function buildCategoryHTML(icon, label, items, buildItemHTML) {
+    if (!items.length) return '';
+    const rows = items.map(buildItemHTML).join('');
+    return `
+      <div class="diff-category">
+        <div class="diff-category-header" onclick="this.nextElementSibling.classList.toggle('d-none')">
+          <i class="bi ${icon} me-1"></i>${label}
+          <span class="diff-cat-count">${items.length}件</span>
+          <i class="bi bi-chevron-down ms-2" style="font-size:.7rem;opacity:.5"></i>
+        </div>
+        <div class="diff-item-list">${rows}</div>
+      </div>`;
+  }
+
+  // ─ サブ情報行（プロジェクト・オーナー）ビルダー ─
+  const subInfo = (project, owner) => `
+    <div class="diff-item-sub">
+      ${project ? `<span><i class="bi bi-folder2"></i>${esc(project)}</span>` : ''}
+      ${owner   ? `<span><i class="bi bi-person"></i>${esc(owner)}</span>`   : ''}
+    </div>`;
+
+  const userSubInfo = (email, role) => `
+    <div class="diff-item-sub">
+      ${email ? `<span><i class="bi bi-envelope"></i>${esc(email)}</span>` : ''}
+      ${role  ? `<span><i class="bi bi-shield-check"></i>${esc(role)}</span>` : ''}
+    </div>`;
+
+  // ─ 各アイテム行HTMLビルダー（追加・削除） ─
+  const wbItem = r => `<div class="diff-item">
+    <i class="bi bi-journal-richtext diff-item-icon" style="color:#2F5B94"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(r.name)}</div>
+      ${subInfo(r.project, r.owner)}
+    </div>
+  </div>`;
+
+  const dsItem = r => `<div class="diff-item">
+    <i class="bi bi-database-fill diff-item-icon" style="color:#4C9AED"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(r.name)}</div>
+      ${subInfo(r.project, r.owner)}
+    </div>
+  </div>`;
+
+  const flowItem = r => `<div class="diff-item">
+    <i class="bi bi-diagram-2-fill diff-item-icon" style="color:#4472c4"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(r.name)}</div>
+      ${subInfo(r.project, r.owner)}
+    </div>
+  </div>`;
+
+  const userItem = r => `<div class="diff-item">
+    <i class="bi bi-person-fill diff-item-icon" style="color:#2F5B94"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(r.name)}</div>
+      ${userSubInfo(r.email, r.site_role)}
+    </div>
+  </div>`;
+
+  // ─ 更新アイテムビルダー（変更詳細付き） ─
+  const wbChangedItem = ({ cur, changedFields, prev }) => `<div class="diff-item">
+    <i class="bi bi-journal-richtext diff-item-icon" style="color:#2F5B94"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(cur.name)}</div>
+      ${subInfo(cur.project, cur.owner)}
+      <div class="diff-item-changes">${buildChangeRows(changedFields, cur, prev)}</div>
+    </div>
+  </div>`;
+
+  const dsChangedItem = ({ cur, changedFields, prev }) => `<div class="diff-item">
+    <i class="bi bi-database-fill diff-item-icon" style="color:#4C9AED"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(cur.name)}</div>
+      ${subInfo(cur.project, cur.owner)}
+      <div class="diff-item-changes">${buildChangeRows(changedFields, cur, prev)}</div>
+    </div>
+  </div>`;
+
+  const flowChangedItem = ({ cur, changedFields, prev }) => `<div class="diff-item">
+    <i class="bi bi-diagram-2-fill diff-item-icon" style="color:#4472c4"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(cur.name)}</div>
+      ${subInfo(cur.project, cur.owner)}
+      <div class="diff-item-changes">${buildChangeRows(changedFields, cur, prev)}</div>
+    </div>
+  </div>`;
+
+  const userChangedItem = ({ cur, changedFields, prev }) => `<div class="diff-item">
+    <i class="bi bi-person-fill diff-item-icon" style="color:#2F5B94"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(cur.name)}</div>
+      ${userSubInfo(cur.email, cur.site_role)}
+      <div class="diff-item-changes">${buildChangeRows(changedFields, cur, prev)}</div>
+    </div>
+  </div>`;
+
+  // ─ ワークブック単位のシート変更アイテムビルダー ─
+  const lang = window._lang || 'ja';
+  const sheetLabel = (type) => ({
+    added:   lang === 'ja' ? 'シート追加' : 'Sheet added',
+    deleted: lang === 'ja' ? 'シート削除' : 'Sheet removed',
+    renamed: lang === 'ja' ? 'シート名変更' : 'Sheet renamed',
+  })[type];
+
+  const wbViewChangedItem = ({ name, added, deleted, renamed }) => `<div class="diff-item">
+    <i class="bi bi-journal-richtext diff-item-icon" style="color:#2F5B94"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(name)}</div>
+      <div class="diff-item-changes">
+        ${added.map(n => `<div class="diff-change-row">
+          <span class="diff-change-field">${sheetLabel('added')}</span>
+          <span class="diff-change-before"></span>
+          <span class="diff-change-arrow">＋</span>
+          <span class="diff-change-after">${esc(n)}</span>
+        </div>`).join('')}
+        ${deleted.map(n => `<div class="diff-change-row">
+          <span class="diff-change-field">${sheetLabel('deleted')}</span>
+          <span class="diff-change-before">${esc(n)}</span>
+          <span class="diff-change-arrow">×</span>
+          <span class="diff-change-after"></span>
+        </div>`).join('')}
+        ${renamed.map(r => `<div class="diff-change-row">
+          <span class="diff-change-field">${sheetLabel('renamed')}</span>
+          <span class="diff-change-before">${esc(r.from)}</span>
+          <span class="diff-change-arrow">→</span>
+          <span class="diff-change-after">${esc(r.to)}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+
+  // ─ セクション生成 ─
+  function buildSection(sectionClass, sectionLabel, count, categoriesHTML) {
+    if (count === 0) return '';
+    return `
+    <div class="diff-section ${sectionClass}">
+      <div class="diff-section-header" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('d-none')">
+        <i class="bi bi-chevron-down diff-section-chevron"></i>
+        ${sectionLabel}
+        <span class="diff-count">${count}件</span>
+      </div>
+      <div class="diff-body">${categoriesHTML}</div>
+    </div>`;
+  }
+
+  // 新規セクション
+  const newCats =
+    buildCategoryHTML('bi-journal-richtext', t.diff_cat_wb,   wbDiff.added,          wbItem) +
+    buildCategoryHTML('bi-database-fill',    t.diff_cat_ds,   dsDiff.added,          dsItem) +
+    buildCategoryHTML('bi-diagram-2-fill',   t.diff_cat_flow, flDiff.added,          flowItem) +
+    buildCategoryHTML('bi-person-fill',      t.diff_cat_user, usrDiff.added,         userItem);
+
+  // ─ KTW計算フィールド差分アイテムビルダー ─
+  const ktwDiff = window._ktwDiff || [];
+  const ktwChangedItem = ({ name, added, deleted, changed }) => `<div class="diff-item">
+    <i class="bi bi-journal-richtext diff-item-icon" style="color:#2F5B94"></i>
+    <div class="diff-item-content">
+      <div class="diff-item-name">${esc(name)}</div>
+      <div class="diff-item-changes">
+        ${added.map(f => `<div class="diff-change-row">
+          <span class="diff-change-field">${lang === 'ja' ? 'フィールド追加' : 'Field added'}</span>
+          <span class="diff-change-before"></span>
+          <span class="diff-change-arrow">＋</span>
+          <span class="diff-change-after">${esc(f.datasource)} / ${esc(f.field)}</span>
+        </div>`).join('')}
+        ${deleted.map(f => `<div class="diff-change-row">
+          <span class="diff-change-field">${lang === 'ja' ? 'フィールド削除' : 'Field removed'}</span>
+          <span class="diff-change-before">${esc(f.datasource)} / ${esc(f.field)}</span>
+          <span class="diff-change-arrow">×</span>
+          <span class="diff-change-after"></span>
+        </div>`).join('')}
+        ${changed.map(({ field: f, prevFormula }) => `<div class="diff-change-row">
+          <span class="diff-change-field">${esc(f.field)}</span>
+          <span class="diff-change-before">${esc(prevFormula)}</span>
+          <span class="diff-change-arrow">→</span>
+          <span class="diff-change-after">${esc(f.formula)}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+
+  // 更新セクション（名前/プロジェクト/オーナー/認定変更 + シート追加削除 + KTW計算フィールド変更）
+  const ktwChangedCount = ktwDiff.length;
+  const changedCats =
+    buildCategoryHTML('bi-journal-richtext', t.diff_cat_wb,         wbDiff.changed,    wbChangedItem) +
+    buildCategoryHTML('bi-journal-richtext', t.diff_cat_wb_content, wbWithViewChanges, wbViewChangedItem) +
+    buildCategoryHTML('bi-calculator-fill',  t.diff_cat_ktw,        ktwDiff,           ktwChangedItem) +
+    buildCategoryHTML('bi-database-fill',    t.diff_cat_ds,         dsDiff.changed,    dsChangedItem) +
+    buildCategoryHTML('bi-diagram-2-fill',   t.diff_cat_flow,       flDiff.changed,    flowChangedItem) +
+    buildCategoryHTML('bi-person-fill',      t.diff_cat_user,       usrDiff.changed,   userChangedItem);
+
+  // 削除セクション
+  const deletedCats =
+    buildCategoryHTML('bi-journal-richtext', t.diff_cat_wb,   wbDiff.deleted,        wbItem) +
+    buildCategoryHTML('bi-database-fill',    t.diff_cat_ds,   dsDiff.deleted,        dsItem) +
+    buildCategoryHTML('bi-diagram-2-fill',   t.diff_cat_flow, flDiff.deleted,        flowItem) +
+    buildCategoryHTML('bi-person-fill',      t.diff_cat_user, usrDiff.deleted,       userItem);
+
+  const noChanges = total === 0
+    ? `<div class="diff-empty"><i class="bi bi-check-circle-fill fs-2 d-block mb-2" style="color:#27ae60"></i>${t.diff_no_changes}</div>`
+    : '';
+
+  el.innerHTML = `
+    <!-- 比較メタ情報 -->
+    <div class="diff-meta-bar">
+      <i class="bi bi-git text-primary"></i>
+      <span class="text-muted small">${t.diff_compared_to} <strong>${snapDate}</strong></span>
+      <div class="diff-badge-group ms-auto">
+        ${totalNew     ? `<span class="diff-stat-badge new">🟢 ${t.diff_new_section.replace('🟢 ','')} <strong>${totalNew}</strong>件</span>` : ''}
+        ${totalChanged ? `<span class="diff-stat-badge changed">🟡 ${t.diff_changed_section.replace('🟡 ','')} <strong>${totalChanged}</strong>件</span>` : ''}
+        ${totalDeleted ? `<span class="diff-stat-badge deleted">🔴 ${t.diff_deleted_section.replace('🔴 ','')} <strong>${totalDeleted}</strong>件</span>` : ''}
+        ${total === 0  ? `<span class="diff-stat-badge new">✔ ${t.diff_no_changes}</span>` : ''}
+      </div>
+    </div>
+    ${noChanges}
+    ${buildSection('new-section',     t.diff_new_section,     totalNew,     newCats)}
+    ${buildSection('changed-section', t.diff_changed_section, totalChanged, changedCats)}
+    ${buildSection('deleted-section', t.diff_deleted_section, totalDeleted, deletedCats)}
+  `;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return iso.slice(0, 10);
+}
+
+/** days を受け取り、threshold 超えなら警告バッジを返す */
+function ageBadge(days, threshold) {
+  if (days === null || days === undefined) return '<span class="badge badge-uncert">不明</span>';
+  if (days > threshold) return `<span class="badge badge-stale">${days}日</span>`;
+  return `<span class="badge badge-fresh">${days}日</span>`;
+}
+
+function certBadge(certified) {
+  return certified
+    ? '<span class="badge badge-certified"><i class="bi bi-patch-check-fill me-1"></i>認定済み</span>'
+    : '<span class="badge badge-uncert">未認定</span>';
+}
+
+function jobBadge(code) {
+  return code === 0
+    ? '<span class="badge badge-ok"><i class="bi bi-check-circle me-1"></i>成功</span>'
+    : '<span class="badge badge-fail"><i class="bi bi-x-circle me-1"></i>失敗</span>';
+}
+
+function initTable(id, order, opts) {
+  opts = opts || {};
+  if ($.fn.DataTable.isDataTable('#' + id)) {
+    $('#' + id).DataTable().destroy();
+  }
+  const lang = window._lang || 'ja';
+  const DT_LANG = {
+    ja: {
+      search: '検索:', lengthMenu: '_MENU_ 件表示',
+      info: '_START_–_END_ / _TOTAL_ 件', infoEmpty: '0件',
+      paginate: { previous: '‹', next: '›' }, emptyTable: 'データがありません',
+    },
+    en: {
+      search: 'Search:', lengthMenu: '_MENU_ per page',
+      info: '_START_–_END_ of _TOTAL_', infoEmpty: '0 records',
+      paginate: { previous: '‹', next: '›' }, emptyTable: 'No data available',
+    },
+  };
+  return $('#' + id).DataTable({
+    pageLength: opts.pageLength || 25,
+    order: order || [[0, 'asc']],
+    language: DT_LANG[lang] || DT_LANG.ja,
+  });
+}
+
+// ============================================================
+// ワークブック行展開 — 状態
+// ============================================================
+let _wbDt = null;          // DataTables instance for workbooks
+let _wbRows = {};           // wbId → workbook row data
+let _wbExpandCache = {};    // wbId → {fields, edges, datasource_info} from API
+
+// ============================================================
+// セクション切り替え（カードナビゲーション）
+// ============================================================
+
+/**
+ * section: 'wb' | 'ds' | 'views' | 'users'
+ * サマリーカードのハイライトを更新し、対応する Tab ペインを表示する
+ */
+function switchToSection(section) {
+  // カードハイライトをリセット → 対象カードをハイライト
+  document.querySelectorAll('.stat-card[id^="scard-"]').forEach(c => c.classList.remove('active-section'));
+  const card = document.getElementById('scard-' + section);
+  if (card) card.classList.add('active-section');
+
+  // navタブのアクティブ状態を同期
+  document.querySelectorAll('#mainTab .nav-link').forEach(l => l.classList.remove('active'));
+  const NAV_SECTIONS = { schedules: 0, topviews: 1, fields: 2, diff: 3 };
+  if (section in NAV_SECTIONS) {
+    document.querySelectorAll('#mainTab .nav-link')[NAV_SECTIONS[section]]?.classList.add('active');
+  }
+
+  // タブペインを直接 CSS クラスで切り替え（Bootstrap Tab API はナビ親要素が必要なため回避）
+  const ALL_PANES = ['wb', 'ds', 'views', 'users', 'flows', 'schedules', 'topviews', 'fields', 'diff'];
+  ALL_PANES.forEach(id => {
+    const pane = document.getElementById('tab-' + id);
+    if (!pane) return;
+    if (id === section) {
+      pane.classList.add('show', 'active');
+    } else {
+      pane.classList.remove('show', 'active');
+    }
+  });
+}
+
+// ============================================================
+// データ描画
+// ============================================================
+function renderSummary(s) {
+  document.getElementById('s-wb').textContent      = s.total_workbooks;
+  document.getElementById('s-ds').textContent      = s.total_datasources;
+  document.getElementById('s-views').textContent   = s.total_views;
+  document.getElementById('s-users').textContent   = s.total_users;
+  document.getElementById('s-stale').textContent   = s.stale_workbooks + s.stale_datasources;
+  document.getElementById('s-inactive').textContent = s.inactive_users_90d;
+  document.getElementById('s-flows').textContent   = s.total_flows || 0;
+}
+
+function renderWorkbooks(rows) {
+  _wbRows = Object.fromEntries(rows.map(r => [r.id, r]));
+
+  const tbody = document.getElementById('body-wb');
+  tbody.innerHTML = rows.map(r => {
+    const safeUrl = r.url && (r.url.startsWith('https://') || r.url.startsWith('http://')) ? r.url : '';
+    const link = safeUrl
+      ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1" onclick="event.stopPropagation()"><i class="bi bi-box-arrow-up-right"></i></a>`
+      : '—';
+    const tags = (r.tags || []).map(t => `<span class="badge bg-secondary me-1">${esc(t)}</span>`).join('');
+    return `<tr class="wb-data-row" data-wb-id="${esc(r.id)}">
+      <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}</td>
+      <td>${esc(r.project)}</td>
+      <td>${esc(r.owner)}</td>
+      <td data-order="${esc(r.updated_at || '')}">${fmtDate(r.updated_at)}</td>
+      <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}</td>
+      <td data-order="${r.size_mb}">${r.size_mb} MB</td>
+      <td>${tags}</td>
+      <td>${link}</td>
+    </tr>`;
+  }).join('');
+
+  _wbDt = initTable('tbl-wb', [[3, 'desc']]);
+
+  // Row click → expand inline detail panel
+  $('#tbl-wb tbody').off('click.wb').on('click.wb', 'tr.wb-data-row', async function () {
+    const $tr  = $(this);
+    const wbId = this.dataset.wbId;
+    const row  = _wbDt.row($tr);
+
+    // Toggle: close if already open
+    if (row.child.isShown()) {
+      row.child.hide();
+      $tr.removeClass('wb-row-open');
+      $tr.find('.wb-expand-icon').text('▶');
+      return;
+    }
+
+    // Open: show loading placeholder
+    $tr.addClass('wb-row-open');
+    $tr.find('.wb-expand-icon').text('▼');
+    row.child(`<div class="wb-detail-panel">
+      <div class="d-flex align-items-center gap-2 p-3 text-secondary small">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+        ワークブックを解析中...
+      </div>
+    </div>`).show();
+
+    try {
+      if (!_wbExpandCache[wbId]) {
+        _wbExpandCache[wbId] = await fetchJSON('/api/workbooks/' + encodeURIComponent(wbId) + '/fields');
+      }
+      const data = _wbExpandCache[wbId];
+      row.child(buildWbDetailHTML(wbId, data)).show();
+      // Defer Sankey rendering to allow DOM layout
+      setTimeout(() => {
+        if (data.edges && data.edges.length > 0) {
+          renderDetailSankey(wbId, data.edges, data.fields);
+        }
+      }, 60);
+    } catch (e) {
+      row.child(`<div class="wb-detail-panel p-3">
+        <div class="alert alert-danger py-2 mb-0 small">
+          <i class="bi bi-exclamation-triangle me-1"></i>分析に失敗しました: ${esc(e.message)}
+        </div>
+      </div>`).show();
+    }
+  });
+}
+
+let _dsDt = null;
+let _dsRows = {};
+
+function renderDatasources(rows) {
+  _dsRows = Object.fromEntries(rows.map(r => [r.id, r]));
+
+  const tbody = document.getElementById('body-ds');
+  tbody.innerHTML = rows.map(r => `<tr class="wb-data-row" data-ds-id="${esc(r.id)}">
+    <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}</td>
+    <td>${esc(r.project)}</td>
+    <td>${esc(r.owner)}</td>
+    <td>${esc(r.type)}</td>
+    <td>${certBadge(r.certified)}</td>
+    <td data-order="${esc(r.updated_at || '')}">${fmtDate(r.updated_at)}</td>
+    <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}</td>
+  </tr>`).join('');
+
+  _dsDt = initTable('tbl-ds', [[5, 'desc']]);
+
+  // Row click → expand inline detail panel
+  $('#tbl-ds tbody').off('click.ds').on('click.ds', 'tr.wb-data-row', function () {
+    const $tr  = $(this);
+    const dsId = this.dataset.dsId;
+    const row  = _dsDt.row($tr);
+
+    if (row.child.isShown()) {
+      row.child.hide();
+      $tr.removeClass('wb-row-open');
+      $tr.find('.wb-expand-icon').text('▶');
+      return;
+    }
+
+    $tr.addClass('wb-row-open');
+    $tr.find('.wb-expand-icon').text('▼');
+    row.child(buildDsDetailHTML(dsId)).show();
+  });
+}
+
+/** データソース行クリック時の詳細パネル HTML（接続ワークブックを即時表示） */
+function buildDsDetailHTML(dsId) {
+  const ds = _dsRows[dsId] || {};
+
+  // 同プロジェクトのワークブックをフィルタ（API 呼び出し不要）
+  const connected = Object.values(_wbRows).filter(wb => wb.project === ds.project);
+
+  const wbListHTML = connected.length
+    ? connected.map(wb => {
+        const safeUrl = wb.url && (wb.url.startsWith('https://') || wb.url.startsWith('http://')) ? wb.url : '';
+        const linkBtn = safeUrl
+          ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1 ms-1" style="font-size:0.6rem" onclick="event.stopPropagation()"><i class="bi bi-box-arrow-up-right"></i></a>`
+          : '';
+        return `<div class="mb-1 pb-1 border-bottom d-flex align-items-center" style="font-size:0.82rem">
+          <i class="bi bi-journal-richtext me-1" style="color:#2F5B94"></i>
+          <span class="flex-grow-1">${esc(wb.name)}</span>
+          ${ageBadge(wb.days_stale, 180)}${linkBtn}
+        </div>`;
+      }).join('')
+    : '<span class="text-muted small">同プロジェクトのワークブックなし</span>';
+
+  const certRow = ds.cert_note
+    ? `<tr><th class="text-muted fw-normal py-0 pe-2" style="white-space:nowrap">認定コメント</th><td class="py-0"><small>${esc(ds.cert_note)}</small></td></tr>`
+    : '';
+  const descRow = ds.description
+    ? `<tr><th class="text-muted fw-normal py-0 pe-2">説明</th><td class="py-0"><small class="text-muted">${esc(ds.description)}</small></td></tr>`
+    : '';
+
+  return `<div class="wb-detail-panel">
+    <div class="row g-0 p-3 pt-2">
+
+      <!-- データソース情報 -->
+      <div class="col-md-4 pe-3 border-end">
+        <div class="text-secondary fw-semibold mb-2" style="font-size:0.78rem">
+          <i class="bi bi-info-circle me-1"></i>データソース情報
+        </div>
+        <table class="table table-sm mb-0" style="font-size:0.8rem;border-color:#e9ecef">
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">タイプ</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.type || '—')}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">認定</th><td class="py-1" style="border-bottom-color:#e9ecef">${certBadge(ds.certified)}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">プロジェクト</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.project || '—')}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">オーナー</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.owner || '—')}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">最終更新</th><td class="py-1" style="border-bottom-color:#e9ecef">${fmtDate(ds.updated_at)}</td></tr>
+          ${certRow}${descRow}
+        </table>
+      </div>
+
+      <!-- 接続ワークブック -->
+      <div class="col-md-8 ps-3">
+        <div class="text-secondary fw-semibold mb-1" style="font-size:0.78rem">
+          <i class="bi bi-journal-richtext me-1"></i>接続ワークブック（${connected.length}件）
+          <small class="text-muted ms-1 fw-normal">同プロジェクト: ${esc(ds.project || '—')}</small>
+        </div>
+        <div style="max-height:200px;overflow-y:auto">
+          ${wbListHTML}
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function renderViews(rows) {
+  const tbody = document.getElementById('body-views');
+  tbody.innerHTML = rows.map(r => {
+    // last_viewed_at が取れていれば最終閲覧日を、なければ最終更新日を表示
+    const viewedAt  = r.last_viewed_at || r.updated_at;
+    const viewedDay = r.days_since_viewed ?? r.days_stale ?? 9999;
+    return `<tr>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.workbook_name || '')}</td>
+      <td>${esc(r.owner)}</td>
+      <td data-order="${r.total_views}"><strong>${r.total_views.toLocaleString()}</strong></td>
+      <td data-order="${esc(viewedAt || '')}">${fmtDate(viewedAt)}</td>
+      <td data-order="${viewedDay}">${ageBadge(viewedDay, 180)}</td>
+    </tr>`;
+  }).join('');
+  initTable('tbl-views', [[3, 'desc']]);
+}
+
+function renderUsers(rows) {
+  const tbody = document.getElementById('body-users');
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td>${esc(r.name)}</td>
+    <td>${esc(r.email)}</td>
+    <td><span class="badge bg-dark">${esc(r.site_role)}</span></td>
+    <td data-order="${esc(r.last_login || '')}">${fmtDate(r.last_login)}</td>
+    <td data-order="${r.days_since_login ?? 9999}">${ageBadge(r.days_since_login, 90)}</td>
+  </tr>`).join('');
+  initTable('tbl-users', [[4, 'desc']]);
+}
+
+// ============================================================
+// Prep フロー
+// ============================================================
+let _flowDt = null;
+let _flowRows = {};
+let _flowConnCache = {};
+
+function renderFlows(rows) {
+  _flowRows = Object.fromEntries(rows.map(r => [r.id, r]));
+
+  const tbody = document.getElementById('body-flows');
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '';
+    initTable('tbl-flows', [[0, 'asc']]);
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const tags = (r.tags || []).map(t => `<span class="badge bg-secondary me-1">${esc(t)}</span>`).join('');
+    return `<tr class="wb-data-row" data-flow-id="${esc(r.id)}">
+      <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}</td>
+      <td>${esc(r.project)}</td>
+      <td>${esc(r.owner)}</td>
+      <td data-order="${esc(r.updated_at || '')}">${fmtDate(r.updated_at)}</td>
+      <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}</td>
+      <td data-order="${esc(r.last_run_at || '')}">${fmtDate(r.last_run_at)}</td>
+      <td>${tags || '<span class="text-muted">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  _flowDt = initTable('tbl-flows', [[3, 'desc']]);
+
+  $('#tbl-flows tbody').off('click.flow').on('click.flow', 'tr.wb-data-row', async function () {
+    const $tr    = $(this);
+    const flowId = this.dataset.flowId;
+    const row    = _flowDt.row($tr);
+
+    if (row.child.isShown()) {
+      row.child.hide();
+      $tr.removeClass('wb-row-open');
+      $tr.find('.wb-expand-icon').text('▶');
+      return;
+    }
+
+    // アコーディオン: 他の開いている行を閉じる
+    _flowDt.rows().every(function() {
+      if (this.child.isShown()) {
+        this.child.hide();
+        $(this.node()).removeClass('wb-row-open').find('.wb-expand-icon').text('▶');
+      }
+    });
+
+    $tr.addClass('wb-row-open');
+    $tr.find('.wb-expand-icon').text('▼');
+    row.child(`<div class="wb-detail-panel">
+      <div class="d-flex align-items-center gap-2 p-3 text-secondary small">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+        接続情報を読み込み中...
+      </div>
+    </div>`).show();
+
+    try {
+      if (!_flowConnCache[flowId]) {
+        _flowConnCache[flowId] = await fetchJSON('/api/flows/' + encodeURIComponent(flowId) + '/connections');
+      }
+      row.child(buildFlowDetailHTML(flowId, _flowConnCache[flowId])).show();
+    } catch (e) {
+      row.child(`<div class="wb-detail-panel p-3">
+        <div class="alert alert-danger py-2 mb-0 small">
+          <i class="bi bi-exclamation-triangle me-1"></i>接続情報の取得に失敗しました: ${esc(e.message)}
+        </div>
+      </div>`).show();
+    }
+  });
+}
+
+function buildFlowDetailHTML(flowId, data) {
+  const fl   = _flowRows[flowId] || {};
+  const conns = data.connections || [];
+
+  // 接続タイプの日本語ラベルマップ
+  const CONN_LABELS = {
+    'excel-direct': 'Excel', 'textscan': 'テキスト/CSV',
+    'csv':          'CSV',   'bigquery': 'BigQuery',
+    'mysql':        'MySQL', 'postgres': 'PostgreSQL',
+    'sqlserver':    'SQL Server', 'snowflake': 'Snowflake',
+    'hyper':        'Hyper (抽出)', 'tableau-server': 'Tableau',
+  };
+  function connTypeLabel(t) {
+    return CONN_LABELS[t] || t || '不明';
+  }
+
+  const connListHTML = conns.length
+    ? conns.map((c, i) => {
+        const typeLbl = esc(connTypeLabel(c.connection_type));
+        const name    = c.datasource_name ? esc(c.datasource_name) : '<span class="text-muted">—</span>';
+        return `<div class="d-flex align-items-center gap-2 py-2${i < conns.length - 1 ? ' border-bottom' : ''}"
+                     style="font-size:0.82rem;border-color:var(--border-subtle)!important">
+          <i class="bi bi-plug-fill flex-shrink-0" style="color:#4472c4"></i>
+          <span class="fw-semibold flex-grow-1" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
+          <span class="badge bg-secondary flex-shrink-0" style="font-size:0.65rem">${typeLbl}</span>
+        </div>`;
+      }).join('')
+    : '<span class="text-muted small">接続情報なし</span>';
+
+  return `<div class="wb-detail-panel">
+    <div class="p-3 pt-2">
+      <div class="text-secondary fw-semibold mb-1" style="font-size:0.78rem">
+        <i class="bi bi-diagram-2-fill me-1" style="color:#4472c4"></i>データ接続（${conns.length}件）
+      </div>
+      ${connListHTML}
+    </div>
+  </div>`;
+}
+
+/** 頻度を日本語に変換 */
+function fmtFrequency(f) {
+  return { Hourly: '毎時', Daily: '毎日', Weekly: '毎週', Monthly: '毎月' }[f] || (f || '—');
+}
+
+/** 更新種別バッジ */
+function refreshTypeBadge(t) {
+  if (t === 'FullRefresh')        return '<span class="badge" style="background:#2F5B94;font-size:.72rem">完全更新</span>';
+  if (t === 'IncrementalRefresh') return '<span class="badge bg-secondary" style="font-size:.72rem">差分更新</span>';
+  return '<span class="text-muted">—</span>';
+}
+
+/** 次回実行時刻バッジ（過去→赤、24h以内→黄、未来→緑） */
+function nextRunBadge(iso) {
+  if (!iso) return '<span class="text-muted">—</span>';
+  const dt   = new Date(iso);
+  const diffH = (dt - Date.now()) / 3600000;
+  const label = iso.slice(0, 16).replace('T', ' ');
+  if (diffH < 0)  return `<span class="badge badge-stale" title="実行予定を過ぎています"><i class="bi bi-exclamation-triangle me-1"></i>${label}</span>`;
+  if (diffH < 24) return `<span class="badge" style="background:#fff3cd;color:#856404">${label}</span>`;
+  return `<span class="badge badge-fresh">${label}</span>`;
+}
+
+function renderSchedules(rows) {
+  const tbody = document.getElementById('body-schedules');
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '';  // DataTables の emptyTable メッセージに任せる
+    initTable('tbl-schedules', [[0, 'asc']]);
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const typeIcon = r.content_type === 'datasource'
+      ? `<i class="bi bi-database-fill me-1" style="color:#4C9AED"></i>`
+      : `<i class="bi bi-journal-richtext me-1" style="color:#2F5B94"></i>`;
+    const typeLabel = r.content_type === 'datasource' ? 'データソース' : 'ワークブック';
+    return `<tr>
+      <td class="fw-semibold">${typeIcon}${esc(r.content_name || '—')}</td>
+      <td><small class="text-muted">${typeLabel}</small></td>
+      <td>${esc(r.project || '—')}</td>
+      <td>${esc(r.owner || '—')}</td>
+      <td>${refreshTypeBadge(r.refresh_type)}</td>
+      <td><span class="fw-semibold">${fmtFrequency(r.frequency)}</span></td>
+      <td data-order="${esc(r.next_run_at || '')}">${nextRunBadge(r.next_run_at)}</td>
+    </tr>`;
+  }).join('');
+  initTable('tbl-schedules', [[6, 'asc']]);
+}
+
+function renderTopViews(top) {
+  if (!top || top.length === 0) { document.getElementById('top-views-chart').innerHTML = 'データなし'; return; }
+  const max = top[0].total_views || 1;
+  document.getElementById('top-views-chart').innerHTML = top.map((v, i) => `
+    <div class="d-flex align-items-center mb-2 gap-2">
+      <span class="text-muted fw-bold" style="width:1.5rem;text-align:right">${i + 1}</span>
+      <div style="width:220px;flex-shrink:0">
+        <div class="fw-semibold text-truncate" title="${esc(v.name)}">${esc(v.name)}</div>
+        <small class="text-muted">${esc(v.workbook_name || '')}</small>
+      </div>
+      <div class="bar-wrap flex-grow-1">
+        <div class="bar-fill" style="width:${Math.round(v.total_views / max * 100)}%"></div>
+      </div>
+      <span class="fw-bold" style="width:5rem;text-align:right">${v.total_views.toLocaleString()} views</span>
+    </div>`).join('');
+}
+
+// ============================================================
+// ポーリング & 初期ロード
+// ============================================================
+let _pollTimer = null;
+
+async function loadAll() {
+  try {
+    const [wb, ds, views, users, schedules, flows, summary] = await Promise.all([
+      fetchJSON('/api/workbooks'),
+      fetchJSON('/api/datasources'),
+      fetchJSON('/api/views'),
+      fetchJSON('/api/users'),
+      fetchJSON('/api/schedules'),
+      fetchJSON('/api/flows'),
+      fetchJSON('/api/summary'),
+    ]);
+
+    // スナップショットをローテーション: cur→prev, 今回データ→cur
+    rotateSnapshot({ wb, ds, flows, users });
+
+    // 言語切替時の再レンダリングのためにグローバル保存
+    window._allData = { wb, ds, views, users, schedules, flows, summary };
+
+    // 差分タブ描画（prevがあれば差分を表示、なければ案内を表示）
+    renderDiffTab(loadSnapshot());
+
+    // KTWタグ付きWBの計算フィールドをバックグラウンドでスキャン（完了後に差分タブを更新）
+    fetchKtwFields();
+
+    renderSummary(summary);
+    renderWorkbooks(wb);
+    populateWbDropdown(wb);   // 計算フィールド分析タブのドロップダウンを更新
+
+    // 180日以上未閲覧ワークブック数（ビューデータから各WBの最終閲覧日を算出）
+    const wbMinView = {};
+    views.forEach(v => {
+      const wn = v.workbook_name;
+      if (!wn) return;
+      const d = v.days_since_viewed ?? v.days_stale ?? 9999;
+      if (!(wn in wbMinView) || d < wbMinView[wn]) wbMinView[wn] = d;
+    });
+    const unviewedWbCount = Object.values(wbMinView).filter(d => d > 180).length;
+    document.getElementById('s-stale').textContent = unviewedWbCount;
+
+    renderDatasources(ds);
+    renderViews(views);
+    renderUsers(users);
+    renderSchedules(schedules);
+    renderFlows(flows);
+    renderTopViews(summary.top_views);
+    // デフォルトでワークブックカードをアクティブに
+    switchToSection('wb');
+  } catch (e) {
+    console.error('loadAll failed:', e);
+    document.getElementById('alert-bar').style.display = 'block';
+    document.getElementById('alert-msg').textContent = 'データの読み込みに失敗しました: ' + e.message;
+  }
+}
+
+async function pollStatus() {
+  try {
+    const data = await fetchJSON('/api/status');
+
+    document.getElementById('fetched-label').textContent =
+      data.fetched_at
+        ? '最終更新: ' + new Date(data.fetched_at).toLocaleString('ja-JP')
+        : '';
+
+    if (data.status === 'ok') {
+      clearInterval(_pollTimer);
+      _pollTimer = null;
+      document.getElementById('loading-overlay').style.display = 'none';
+      document.getElementById('main-content').style.display   = 'block';
+      document.getElementById('btn-refresh').disabled = false;
+      await loadAll();
+    } else if (data.status === 'error') {
+      clearInterval(_pollTimer);
+      _pollTimer = null;
+      document.getElementById('loading-overlay').style.display = 'none';
+      document.getElementById('alert-bar').style.display = 'block';
+      document.getElementById('alert-msg').textContent   = data.error;
+      document.getElementById('btn-refresh').disabled = false;
+    } else {
+      // loading / idle — keep polling
+      document.getElementById('loading-msg').textContent =
+        data.status === 'loading' ? 'Tableau Cloud からデータを取得中...' : '待機中...';
+    }
+  } catch (e) {
+    console.error('pollStatus failed:', e);
+  }
+}
+
+async function triggerRefresh() {
+  document.getElementById('btn-refresh').disabled = true;
+  _wbExpandCache = {};  // Clear field analysis cache on full refresh
+  _wbRows = {};
+  _dsRows = {};
+  _flowRows = {};
+  _flowConnCache = {};
+  document.getElementById('alert-bar').style.display = 'none';
+  document.getElementById('loading-overlay').style.display = 'flex';
+  document.getElementById('main-content').style.display   = 'none';
+  await fetch('/api/refresh', { method: 'POST' });
+  if (_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(pollStatus, 2000);
+  await pollStatus();
+}
+
+// 起動時ポーリング開始
+_pollTimer = setInterval(pollStatus, 2000);
+pollStatus();
+
+// ============================================================
+// 計算フィールド分析
+// ============================================================
+
+// データソースごとのカラーパレット
+const DS_PALETTE = [
+  '#2e75b6', '#70ad47', '#ed7d31', '#7030a0',
+  '#c00000', '#4472c4', '#00b0f0', '#ffc000',
+  '#00b050', '#ff0000',
+];
+
+/** ワークブック一覧からドロップダウンを構築 */
+function populateWbDropdown(workbooks) {
+  const sel = document.getElementById('wb-select-fields');
+  sel.innerHTML = '<option value="">-- 選択してください --</option>';
+  workbooks.forEach(wb => {
+    const opt = document.createElement('option');
+    opt.value = wb.id;
+    opt.textContent = `${wb.name}（${wb.project}）`;
+    sel.appendChild(opt);
+  });
+}
+
+/** 分析ボタン押下 */
+async function analyzeWorkbook() {
+  const wbId = document.getElementById('wb-select-fields').value;
+  if (!wbId) { alert('ワークブックを選択してください'); return; }
+
+  const btnAnalyze = document.getElementById('btn-analyze');
+  btnAnalyze.disabled = true;
+  document.getElementById('fields-loading').style.display = 'block';
+  document.getElementById('fields-result').style.display  = 'none';
+  document.getElementById('fields-empty').style.display   = 'none';
+
+  try {
+    const data = await fetchJSON(`/api/workbooks/${wbId}/fields`);
+
+    if (!data.fields || data.fields.length === 0) {
+      document.getElementById('fields-loading').style.display = 'none';
+      document.getElementById('fields-empty').style.display   = 'block';
+      return;
+    }
+
+    // Show result container FIRST so DataTables can measure column widths correctly
+    document.getElementById('fields-loading').style.display = 'none';
+    document.getElementById('fields-result').style.display  = 'block';
+
+    renderDatasourceInfo(data.datasource_info, data.fields);
+    renderFieldTable(data.fields);
+    renderSankeyDiagram(data.edges, data.fields);
+  } catch (e) {
+    console.error('analyzeWorkbook failed:', e);
+    document.getElementById('fields-loading').style.display = 'none';
+    document.getElementById('alert-bar').style.display = 'block';
+    document.getElementById('alert-msg').textContent = 'ワークブック分析に失敗しました: ' + e.message;
+  } finally {
+    btnAnalyze.disabled = false;
+  }
+}
+
+/** データソース接続情報カード */
+function renderDatasourceInfo(dsInfo, fields) {
+  const dsNames  = [...new Set(fields.map(f => f.datasource))];
+  const dsColors = Object.fromEntries(dsNames.map((n, i) => [n, DS_PALETTE[i % DS_PALETTE.length]]));
+
+  const area = document.getElementById('ds-info-area');
+  if (!dsInfo || dsInfo.length === 0) { area.innerHTML = ''; return; }
+
+  area.innerHTML = `
+    <div class="mb-2 fw-bold text-secondary small">
+      <i class="bi bi-database me-1"></i>使用データソース（${dsInfo.length}件）
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      ${dsInfo.map(ds => {
+        const color = dsColors[ds.name] || '#aaa';
+        const conns = ds.connections.length
+          ? ds.connections.map(c =>
+              `<span class="badge bg-secondary me-1">${esc(c.type)}${c.server ? ': ' + esc(c.server) : ''}${c.database ? ' / ' + esc(c.database) : ''}</span>`
+            ).join('')
+          : '<span class="text-muted small">接続情報なし</span>';
+        return `
+          <div class="card border-0 p-2" style="border-left:4px solid ${color}!important; box-shadow:0 1px 4px rgba(0,0,0,.08); min-width:200px;">
+            <div class="fw-semibold small" style="color:${color}">
+              <i class="bi bi-database-fill me-1"></i>${esc(ds.name)}
+            </div>
+            <div class="mt-1">${conns}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+/** 計算フィールドテーブル */
+function renderFieldTable(fields) {
+  const dsNames  = [...new Set(fields.map(f => f.datasource))];
+  const dsColors = Object.fromEntries(dsNames.map((n, i) => [n, DS_PALETTE[i % DS_PALETTE.length]]));
+
+  const tbody = document.getElementById('body-fields');
+  tbody.innerHTML = fields.map(f => {
+    const color   = dsColors[f.datasource] || '#aaa';
+    const preview = f.formula.length > 80 ? esc(f.formula.slice(0, 80)) + '…' : esc(f.formula);
+    return `<tr>
+      <td>
+        <span class="badge" style="background:${color}">${esc(f.datasource)}</span>
+      </td>
+      <td class="fw-semibold">${esc(f.field)}</td>
+      <td>
+        <code class="small text-muted" title="${esc(f.formula)}">${preview}</code>
+      </td>
+    </tr>`;
+  }).join('');
+
+  initTable('tbl-fields', [[0, 'asc']], { pageLength: 15 });
+}
+
+/** D3 v7 + d3-sankey で依存関係図を描画 */
+function renderSankeyDiagram(edges, fields) {
+  const container = document.getElementById('sankey-container');
+  // 既存コンテンツをクリア
+  d3.select('#sankey-container').selectAll('*').remove();
+
+  if (!edges || edges.length === 0) {
+    container.innerHTML =
+      '<div class="text-muted text-center py-5"><i class="bi bi-diagram-3 fs-1 d-block mb-2"></i>依存関係のある計算フィールドがありません</div>';
+    return;
+  }
+
+  // データソースごとの色マッピング
+  const dsNames  = [...new Set(fields.map(f => f.datasource))];
+  const dsColors = Object.fromEntries(dsNames.map((n, i) => [n, DS_PALETTE[i % DS_PALETTE.length]]));
+  const fieldDs  = Object.fromEntries(fields.map(f => [f.field, f.datasource]));
+
+  // ノード・リンク構築
+  const nodeNames = new Set();
+  edges.forEach(e => { nodeNames.add(e.source); nodeNames.add(e.target); });
+  const nodes = Array.from(nodeNames).map(name => ({
+    name,
+    color:      dsColors[fieldDs[name]] || '#aaa',
+    datasource: fieldDs[name]           || '（不明）',
+  }));
+  const nodeIdx = Object.fromEntries(nodes.map((n, i) => [n.name, i]));
+  const links   = edges.map(e => ({
+    source:     nodeIdx[e.source],
+    target:     nodeIdx[e.target],
+    value:      Math.max(1, e.weight),
+    formula:    e.formula || '',
+    datasource: e.datasource || '',
+  }));
+
+  // 確実に実レンダリング幅を取得
+  const width  = Math.max(container.getBoundingClientRect().width || container.offsetWidth || 900, 600);
+  const height = Math.max(540, nodes.length * 30);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  // SVG — 100% 幅で全幅表示
+  const svg = d3.select('#sankey-container')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('width', '100%')
+    .style('display', 'block');
+
+  // Sankey レイアウト
+  const sankey = d3.sankey()
+    .nodeWidth(18)
+    .nodePadding(14)
+    .extent([[1, 1], [width - 1, height - 6]]);
+
+  const graph = sankey({
+    nodes: nodes.map(d => ({ ...d })),
+    links: links.map(d => ({ ...d })),
+  });
+
+  // ツールチップ（CSS クラスでテーマ対応）
+  const tooltip = d3.select('#sankey-container')
+    .append('div')
+    .classed('sankey-tooltip', true);
+
+  function positionTooltip(event) {
+    const tipNode = tooltip.node();
+    const container = document.getElementById('sankey-container');
+    const cW = container ? container.clientWidth  : 9999;
+    const cH = container ? container.clientHeight : 9999;
+    const tW = tipNode.offsetWidth;
+    const tH = tipNode.offsetHeight;
+    const x = event.offsetX;
+    const y = event.offsetY;
+    const left = (x + 14 + tW > cW) ? Math.max(0, x - tW - 14) : x + 14;
+    const top  = (y + 14 + tH > cH) ? Math.max(0, y - tH - 14) : y + 14;
+    tooltip.style('left', left + 'px').style('top', top + 'px');
+  }
+  function showTooltip(event, html) {
+    tooltip.style('display', 'block').html(html);
+    positionTooltip(event);
+  }
+  function moveTooltip(event) { positionTooltip(event); }
+  function hideTooltip() { tooltip.style('display', 'none'); }
+
+  // リンク描画
+  svg.append('g').selectAll('path')
+    .data(graph.links)
+    .join('path')
+    .attr('d',              d3.sankeyLinkHorizontal())
+    .attr('stroke',         isDark ? '#3a5a80' : '#ccc')
+    .attr('stroke-width',   d => Math.max(1, d.width))
+    .attr('fill',           'none')
+    .attr('stroke-opacity', isDark ? 0.55 : 0.45)
+    .on('mouseover', function(event, d) {
+      d3.select(this).attr('stroke', isDark ? '#6ab0f0' : 'orange').attr('stroke-opacity', 0.9);
+      showTooltip(event,
+        `<strong>${esc(d.source.name)} → ${esc(d.target.name)}</strong><hr class="my-1">`
+        + `<code style="font-size:11px">${esc(d.formula)}</code>`);
+    })
+    .on('mousemove', moveTooltip)
+    .on('mouseout',  function() {
+      d3.select(this).attr('stroke', isDark ? '#3a5a80' : '#ccc').attr('stroke-opacity', isDark ? 0.55 : 0.45);
+      hideTooltip();
+    });
+
+  // ノード描画
+  const node = svg.append('g').selectAll('g')
+    .data(graph.nodes)
+    .join('g');
+
+  node.append('rect')
+    .attr('x',      d => d.x0)
+    .attr('y',      d => d.y0)
+    .attr('height', d => Math.max(1, d.y1 - d.y0))
+    .attr('width',  d => d.x1 - d.x0)
+    .attr('fill',   d => d.color)
+    .attr('rx',     2)
+    .on('mouseover', function(event, d) {
+      // 接続リンクをハイライト
+      svg.selectAll('path')
+        .attr('stroke', l => (l.source?.name === d.name || l.target?.name === d.name) ? d.color : '#ccc')
+        .attr('stroke-opacity', l => (l.source?.name === d.name || l.target?.name === d.name) ? 0.85 : 0.2);
+      showTooltip(event,
+        `<strong>${esc(d.name)}</strong><br>`
+        + `<span class="text-muted">📂 ${esc(d.datasource)}</span>`);
+    })
+    .on('mousemove', moveTooltip)
+    .on('mouseout',  function() {
+      svg.selectAll('path').attr('stroke', isDark ? '#3a5a80' : '#ccc').attr('stroke-opacity', isDark ? 0.55 : 0.45);
+      hideTooltip();
+    });
+
+  // ラベル描画（テーマ対応・ハロー付きで読みやすく）
+  node.append('text')
+    .attr('x',            d => d.x0 < width / 2 ? d.x1 + 7 : d.x0 - 7)
+    .attr('y',            d => (d.y0 + d.y1) / 2)
+    .attr('dy',           '0.35em')
+    .attr('text-anchor',  d => d.x0 < width / 2 ? 'start' : 'end')
+    .attr('font-size',    '12px')
+    .attr('font-weight',  '500')
+    .attr('fill',         isDark ? '#dce8ff' : '#1a1a2e')
+    .attr('stroke',       isDark ? 'rgba(10,18,38,0.9)' : 'rgba(255,255,255,0.9)')
+    .attr('stroke-width', '2.5')
+    .attr('paint-order',  'stroke fill')
+    .text(d => d.name.length > 30 ? d.name.slice(0, 29) + '…' : d.name)
+    .append('title').text(d => d.name);
+
+  // データソース凡例
+  const legendX = 8;
+  let legendY   = height - (dsNames.length * 18) - 8;
+  dsNames.forEach((ds, i) => {
+    svg.append('rect')
+      .attr('x', legendX).attr('y', legendY + i * 18)
+      .attr('width', 12).attr('height', 12)
+      .attr('rx', 2).attr('fill', dsColors[ds]);
+    svg.append('text')
+      .attr('x', legendX + 16).attr('y', legendY + i * 18 + 10)
+      .attr('font-size', '11px').attr('fill', isDark ? '#aac4e0' : '#555')
+      .text(ds.length > 30 ? ds.slice(0, 29) + '…' : ds);
+  });
+}
+
+// ============================================================
+// ワークブック行展開 — 詳細パネル構築
+// ============================================================
+
+/** クリックで展開される詳細パネルの HTML を生成 */
+function buildWbDetailHTML(wbId, data) {
+  const wb     = _wbRows[wbId] || {};
+  const fields = data.fields          || [];
+  const dsInfo = data.datasource_info || [];
+  const edges  = data.edges           || [];
+
+  const dsNames  = [...new Set(fields.map(f => f.datasource))];
+  const dsColors = Object.fromEntries(dsNames.map((n, i) => [n, DS_PALETTE[i % DS_PALETTE.length]]));
+
+  // --- 説明文 ---
+  const descHTML = wb.description
+    ? `<div class="px-3 pt-2 text-muted small fst-italic border-bottom pb-2">${esc(wb.description)}</div>`
+    : '';
+
+  // --- データソース接続カード ---
+  // ファイルパスを短縮表示する（フルパスは title 属性で確認可能）
+  function shortPath(p) {
+    if (!p || p.length <= 40) return p || '';
+    const normalized = p.replace(/\\/g, '/');
+    const parts = normalized.split('/');
+    const fname = parts[parts.length - 1];
+    return fname.length <= 35 ? '…/' + fname : '…' + fname.slice(-35);
+  }
+
+  const dsCardsHTML = dsInfo.length
+    ? dsInfo.map(ds => {
+        const color = dsColors[ds.name] || '#aaa';
+        const conns = ds.connections.length
+          ? ds.connections.map(c => {
+              const dbShort = c.database ? ' / ' + shortPath(c.database) : '';
+              const dbFull  = c.database || '';
+              return `<span class="badge bg-secondary me-1 mb-1" style="font-size:0.62rem;white-space:normal;word-break:break-all" title="${esc(dbFull)}">${esc(c.type)}${c.server ? ': ' + esc(c.server) : ''}${dbShort}</span>`;
+            }).join('')
+          : '<span class="text-muted" style="font-size:0.75rem">接続情報なし</span>';
+        return `<div class="mb-2 ps-2" style="border-left:3px solid ${color};overflow:hidden">
+          <div class="fw-semibold" style="color:${color};font-size:0.8rem">
+            <i class="bi bi-database-fill me-1"></i>${esc(ds.name)}
+          </div>
+          <div class="mt-1">${conns}</div>
+        </div>`;
+      }).join('')
+    : '<span class="text-muted small">データソース情報なし</span>';
+
+  // --- 計算フィールド一覧 ---
+  const MAX_FIELDS = 15;
+  const fieldItems = fields.slice(0, MAX_FIELDS).map(f => {
+    const color   = dsColors[f.datasource] || '#aaa';
+    const preview = f.formula.length > 55 ? esc(f.formula.slice(0, 55)) + '…' : esc(f.formula);
+    return `<div class="mb-1 pb-1 border-bottom" style="font-size:0.79rem">
+      <span class="badge me-1" style="background:${color};font-size:0.58rem">${esc(f.datasource)}</span>
+      <strong>${esc(f.field)}</strong>
+      <div class="text-muted" style="font-family:monospace;font-size:0.7rem" title="${esc(f.formula)}">${preview}</div>
+    </div>`;
+  }).join('');
+  const moreFieldsHTML = fields.length > MAX_FIELDS
+    ? `<div class="text-muted small mt-1">…他 ${fields.length - MAX_FIELDS} 件（詳細分析タブで全件確認）</div>`
+    : '';
+  const fieldsHTML = fields.length
+    ? `<div class="wb-detail-fields">${fieldItems}${moreFieldsHTML}</div>`
+    : '<span class="text-muted small">計算フィールドなし</span>';
+
+  // --- Sankey エリア ---
+  const sankeyAreaHTML = edges.length
+    ? `<div id="detail-sankey-${esc(wbId)}" style="position:relative;min-height:180px"></div>`
+    : `<div class="text-muted small pt-2"><i class="bi bi-diagram-3 me-1"></i>フィールド間の依存関係なし</div>`;
+
+  return `<div class="wb-detail-panel">
+    ${descHTML}
+    <div class="row g-0 p-3 pt-2">
+
+      <!-- データソース接続 -->
+      <div class="col-md-3 pe-3 border-end">
+        <div class="text-secondary fw-semibold mb-2" style="font-size:0.78rem">
+          <i class="bi bi-database me-1"></i>データソース接続 (${dsInfo.length})
+        </div>
+        ${dsCardsHTML}
+      </div>
+
+      <!-- 計算フィールド一覧 -->
+      <div class="col-md-4 px-3 border-end">
+        <div class="text-secondary fw-semibold mb-2" style="font-size:0.78rem">
+          <i class="bi bi-calculator me-1"></i>計算フィールド (${fields.length})
+        </div>
+        ${fieldsHTML}
+      </div>
+
+      <!-- ミニ Sankey -->
+      <div class="col-md-5 ps-3">
+        <div class="text-secondary fw-semibold mb-2" style="font-size:0.78rem">
+          <i class="bi bi-share me-1"></i>フィールド依存関係
+        </div>
+        ${sankeyAreaHTML}
+      </div>
+
+    </div>
+    <div class="px-3 pb-2 border-top pt-2 d-flex gap-2">
+      <button class="btn btn-sm btn-outline-primary py-0"
+        data-wb-open="${esc(wbId)}" onclick="openFullAnalysis(this.dataset.wbOpen)">
+        <i class="bi bi-diagram-3 me-1"></i>詳細分析タブで開く
+      </button>
+    </div>
+  </div>`;
+}
+
+/** 詳細パネル内にミニ Sankey 図を描画（上位 30 エッジ） */
+function renderDetailSankey(wbId, edges, fields) {
+  const el = document.getElementById('detail-sankey-' + wbId);
+  if (!el) return;
+
+  d3.select(el).selectAll('*').remove();
+
+  if (!edges || edges.length === 0) {
+    el.innerHTML = '<span class="text-muted small">依存関係なし</span>';
+    return;
+  }
+
+  const dsNames  = [...new Set((fields || []).map(f => f.datasource))];
+  const dsColors = Object.fromEntries(dsNames.map((n, i) => [n, DS_PALETTE[i % DS_PALETTE.length]]));
+  const fieldDs  = Object.fromEntries((fields || []).map(f => [f.field, f.datasource]));
+
+  // 上位 30 エッジに絞る
+  const topEdges = [...edges].sort((a, b) => (b.weight || 1) - (a.weight || 1)).slice(0, 30);
+
+  const nodeNames = new Set();
+  topEdges.forEach(e => { nodeNames.add(e.source); nodeNames.add(e.target); });
+
+  const nodes   = Array.from(nodeNames).map(name => ({
+    name,
+    color:      dsColors[fieldDs[name]] || '#aaa',
+    datasource: fieldDs[name] || '（不明）',
+  }));
+  const nodeIdx = Object.fromEntries(nodes.map((n, i) => [n.name, i]));
+  const links   = topEdges.map(e => ({
+    source: nodeIdx[e.source],
+    target: nodeIdx[e.target],
+    value:  Math.max(1, e.weight || 1),
+  }));
+
+  const width  = Math.max(el.clientWidth || 300, 200);
+  const height = Math.max(150, Math.min(260, nodes.length * 18));
+
+  const svg = d3.select(el)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height);
+
+  const sankey = d3.sankey()
+    .nodeWidth(10)
+    .nodePadding(5)
+    .extent([[1, 1], [width - 1, height - 4]]);
+
+  let graph;
+  try {
+    graph = sankey({
+      nodes: nodes.map(d => ({ ...d })),
+      links: links.map(d => ({ ...d })),
+    });
+  } catch (_) {
+    el.innerHTML = '<span class="text-muted small">図の描画に失敗しました</span>';
+    return;
+  }
+
+  // リンク
+  svg.append('g').selectAll('path')
+    .data(graph.links)
+    .join('path')
+    .attr('d',              d3.sankeyLinkHorizontal())
+    .attr('stroke',         '#bbb')
+    .attr('stroke-width',   d => Math.max(1, d.width))
+    .attr('fill',           'none')
+    .attr('stroke-opacity', 0.4);
+
+  // ノード
+  const node = svg.append('g').selectAll('g')
+    .data(graph.nodes)
+    .join('g');
+
+  node.append('rect')
+    .attr('x',      d => d.x0)
+    .attr('y',      d => d.y0)
+    .attr('height', d => Math.max(1, d.y1 - d.y0))
+    .attr('width',  d => d.x1 - d.x0)
+    .attr('fill',   d => d.color)
+    .attr('rx',     2);
+
+  // ラベル
+  node.append('text')
+    .attr('x',           d => d.x0 < width / 2 ? d.x1 + 4 : d.x0 - 4)
+    .attr('y',           d => (d.y0 + d.y1) / 2)
+    .attr('dy',          '0.35em')
+    .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+    .attr('font-size',   '9px')
+    .attr('fill',        '#333')
+    .text(d => d.name.length > 20 ? d.name.slice(0, 19) + '…' : d.name)
+    .append('title').text(d => d.name);
+}
+
+// 可視タブ（ジョブ/プロジェクト/Top ビュー/計算フィールド分析）クリック時はカードハイライトを解除
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('#mainTab .nav-link[data-bs-toggle="tab"]').forEach(link => {
+    link.addEventListener('click', () => {
+      document.querySelectorAll('.stat-card[id^="scard-"]').forEach(c => c.classList.remove('active-section'));
+    });
+  });
+});
+
+/** 「詳細分析タブで開く」ボタン押下 */
+function openFullAnalysis(wbId) {
+  // カードハイライトをリセット（可視タブに切り替えるため）
+  document.querySelectorAll('.stat-card[id^="scard-"]').forEach(c => c.classList.remove('active-section'));
+  // 計算フィールド分析タブに切り替え（直接クラス操作）
+  const ALL_PANES2 = ['wb', 'ds', 'views', 'users', 'flows', 'schedules', 'topviews', 'fields'];
+  ALL_PANES2.forEach(id => {
+    const pane = document.getElementById('tab-' + id);
+    if (!pane) return;
+    if (id === 'fields') { pane.classList.add('show', 'active'); }
+    else                 { pane.classList.remove('show', 'active'); }
+  });
+  // 可視タブのアクティブ状態を fields に同期
+  document.querySelectorAll('#mainTab .nav-link').forEach(l => l.classList.remove('active'));
+  const fieldsTabLink = document.querySelector('#mainTab [href="#tab-fields"]');
+  if (fieldsTabLink) fieldsTabLink.classList.add('active');
+
+  // ドロップダウンでワークブックを選択
+  const sel = document.getElementById('wb-select-fields');
+  if (sel) sel.value = wbId;
+
+  // キャッシュがあれば即レンダリング、なければ API 呼び出し
+  if (_wbExpandCache[wbId]) {
+    const data = _wbExpandCache[wbId];
+    document.getElementById('fields-loading').style.display = 'none';
+    if (!data.fields || data.fields.length === 0) {
+      document.getElementById('fields-result').style.display = 'none';
+      document.getElementById('fields-empty').style.display  = 'block';
+    } else {
+      renderDatasourceInfo(data.datasource_info, data.fields);
+      renderFieldTable(data.fields);
+      renderSankeyDiagram(data.edges, data.fields);
+      document.getElementById('fields-result').style.display = 'block';
+      document.getElementById('fields-empty').style.display  = 'none';
+    }
+  } else {
+    analyzeWorkbook();
+  }
+}
+</script>
+</body>
+</html>

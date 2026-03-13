@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>使い方ガイド — Tableau Cloud Manager</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background: #f8f9fa; }
+    .guide-header { background: linear-gradient(135deg, #1e3a5f 0%, #2f5b94 100%); color: #fff; padding: 2.5rem 0 2rem; }
+    .guide-header h1 { font-size: 1.8rem; font-weight: 700; }
+    .section-card { border-radius: 12px; border: none; box-shadow: 0 2px 12px rgba(0,0,0,.07); margin-bottom: 1.5rem; }
+    .section-card .card-header { background: #f0f4f8; border-radius: 12px 12px 0 0 !important; font-weight: 700; font-size: 1rem; border-bottom: 1px solid #dee2e6; }
+    .feature-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #f0f0f0; }
+    .feature-row:last-child { border-bottom: none; }
+    .feature-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 2px; width: 36px; text-align: center; }
+    .feature-title { font-weight: 600; font-size: .92rem; margin-bottom: 3px; }
+    .feature-desc { font-size: .83rem; color: #555; line-height: 1.5; }
+    .badge-action { font-size: .72rem; padding: 2px 8px; border-radius: 20px; background: #e8f0fe; color: #1a56db; font-weight: 600; margin-right: 4px; }
+    .step-list { padding-left: 1.2rem; margin-top: 6px; margin-bottom: 0; font-size: .83rem; color: #444; }
+    .step-list li { margin-bottom: 4px; }
+    .toc a { text-decoration: none; color: #2f5b94; }
+    .toc a:hover { text-decoration: underline; }
+    .back-btn { position: fixed; bottom: 24px; right: 24px; border-radius: 50px; padding: 10px 20px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.2); z-index: 999; }
+  </style>
+</head>
+<body>
+
+<div class="guide-header">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 mb-2">
+      <a href="/" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-left me-1"></i>アプリに戻る</a>
+    </div>
+    <h1><i class="bi bi-question-circle me-2"></i>使い方ガイド</h1>
+    <p class="mb-0 opacity-75">Tableau Cloud Manager の全機能を説明します</p>
+  </div>
+</div>
+
+<div class="container py-4">
+
+  <!-- 目次 -->
+  <div class="card section-card mb-4">
+    <div class="card-header"><i class="bi bi-list-ul me-2"></i>目次</div>
+    <div class="card-body toc">
+      <div class="row">
+        <div class="col-md-6">
+          <ul class="list-unstyled mb-0">
+            <li><a href="#basics">🔵 基本操作（更新・言語・ダークモード）</a></li>
+            <li><a href="#workbooks">📒 ワークブックタブ</a></li>
+            <li><a href="#datasources">🗄️ データソースタブ</a></li>
+            <li><a href="#views">👁️ ビュータブ</a></li>
+            <li><a href="#users">👤 ユーザータブ</a></li>
+            <li><a href="#flows">🔄 Prep フロータブ</a></li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="list-unstyled mb-0">
+            <li><a href="#schedules">📅 スケジュールタブ</a></li>
+            <li><a href="#topviews">🏆 Top ビュータブ</a></li>
+            <li><a href="#fields">🧮 計算フィールドタブ</a></li>
+            <li><a href="#diff">🔍 差分比較タブ</a></li>
+            <li><a href="#ktw">🏷️ KTW監視タグ</a></li>
+            <li><a href="#maintenance">🛠️ メンテナンス</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 基本操作 -->
+  <div class="card section-card" id="basics">
+    <div class="card-header"><i class="bi bi-sliders me-2"></i>基本操作</div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-primary"><i class="bi bi-arrow-clockwise"></i></div>
+        <div>
+          <div class="feature-title">Refresh ボタン <span class="badge-action">右上</span></div>
+          <div class="feature-desc">Tableau Cloud から最新データを取得します。通常 10〜30 秒かかります。<br>
+            押すたびにスナップショットが保存され、次回以降の差分比較に使用されます。
+          </div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon text-secondary"><i class="bi bi-translate"></i></div>
+        <div>
+          <div class="feature-title">JA / EN ボタン <span class="badge-action">右上</span></div>
+          <div class="feature-desc">画面全体の表示言語を日本語 / 英語で切り替えます。設定はページを閉じても記憶されます。</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#f59e0b"><i class="bi bi-moon-stars"></i></div>
+        <div>
+          <div class="feature-title">ダークモードボタン <span class="badge-action">右上</span></div>
+          <div class="feature-desc">画面をダークモード / ライトモードに切り替えます。目に優しい夜間作業向けです。</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon text-info"><i class="bi bi-grid-1x2"></i></div>
+        <div>
+          <div class="feature-title">サマリカード <span class="badge-action">画面上部</span></div>
+          <div class="feature-desc">
+            WB数・DS数・フロー数・ビュー数・ユーザー数をひと目で確認できます。<br>
+            <strong>180日以上未閲覧</strong>と<strong>90日以上未ログイン</strong>のカウントはメンテナンス指標です。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ワークブック -->
+  <div class="card section-card" id="workbooks">
+    <div class="card-header"><i class="bi bi-journal-richtext text-primary me-2"></i>ワークブックタブ</div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-primary"><i class="bi bi-table"></i></div>
+        <div>
+          <div class="feature-title">一覧テーブル</div>
+          <div class="feature-desc">全WBのプロジェクト・オーナー・最終更新日・未閲覧日数・サイズ・タグを表示します。<br>
+            列ヘッダーをクリックするとソート、検索ボックスで絞り込みができます。
+          </div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon text-primary"><i class="bi bi-chevron-right"></i></div>
+        <div>
+          <div class="feature-title">▶ 行を展開（クリック）</div>
+          <div class="feature-desc">
+            行をクリックすると、そのWBに含まれるビュー（シート）の一覧が展開表示されます。
+          </div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#e63946"><i class="bi bi-exclamation-triangle"></i></div>
+        <div>
+          <div class="feature-title">未閲覧日数の赤ハイライト</div>
+          <div class="feature-desc">180日以上閲覧されていないWBは未閲覧日数のセルが赤く表示されます。アーカイブや削除の検討サインです。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- データソース -->
+  <div class="card section-card" id="datasources">
+    <div class="card-header"><i class="bi bi-database-fill" style="color:#4C9AED"></i><span class="ms-2">データソースタブ</span></div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#4C9AED"><i class="bi bi-table"></i></div>
+        <div>
+          <div class="feature-title">一覧テーブル</div>
+          <div class="feature-desc">タイプ・プロジェクト・オーナー・最終更新・認定状態を確認できます。</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#27ae60"><i class="bi bi-patch-check-fill"></i></div>
+        <div>
+          <div class="feature-title">認定バッジ</div>
+          <div class="feature-desc">「認定済み」のデータソースには緑のバッジが表示されます。未認定のものは品質確認を推奨します。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ビュー -->
+  <div class="card section-card" id="views">
+    <div class="card-header"><i class="bi bi-eye-fill text-success me-2"></i>ビュータブ（使用状況）</div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-success"><i class="bi bi-bar-chart"></i></div>
+        <div>
+          <div class="feature-title">累計アクセス数</div>
+          <div class="feature-desc">各シートの累計アクセス数（total_views）を確認できます。使われていないシートの洗い出しに活用してください。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ユーザー -->
+  <div class="card section-card" id="users">
+    <div class="card-header"><i class="bi bi-people-fill text-warning me-2"></i>ユーザータブ</div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-warning"><i class="bi bi-shield-check"></i></div>
+        <div>
+          <div class="feature-title">ライセンス（サイトロール）別一覧</div>
+          <div class="feature-desc">ライセンス種別・最終ログイン日・未ログイン日数を確認できます。</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#e63946"><i class="bi bi-exclamation-triangle"></i></div>
+        <div>
+          <div class="feature-title">未ログイン日数の赤ハイライト</div>
+          <div class="feature-desc">90日以上ログインのないユーザーはハイライト表示。ライセンス費用の最適化に役立てます。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prepフロー -->
+  <div class="card section-card" id="flows">
+    <div class="card-header"><i class="bi bi-diagram-2-fill me-2" style="color:#4472c4"></i>Prep フロータブ</div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#4472c4"><i class="bi bi-chevron-right"></i></div>
+        <div>
+          <div class="feature-title">▶ 行を展開（クリック）</div>
+          <div class="feature-desc">行をクリックするとフローの接続情報（接続先DB・サーバーなど）が展開表示されます。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- スケジュール -->
+  <div class="card section-card" id="schedules">
+    <div class="card-header"><i class="bi bi-calendar-week me-2 text-info"></i>スケジュールタブ <span class="badge bg-secondary ms-2">メニュー内</span></div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-info"><i class="bi bi-clock"></i></div>
+        <div>
+          <div class="feature-title">エクストラクト更新スケジュール</div>
+          <div class="feature-desc">
+            各DS・WBのエクストラクト更新の頻度・次回実行予定時刻を一覧表示します。<br>
+            ナビバー右端「Schedules」または上部ナビから開きます。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Views -->
+  <div class="card section-card" id="topviews">
+    <div class="card-header"><i class="bi bi-trophy-fill text-warning me-2"></i>Top ビュータブ <span class="badge bg-secondary ms-2">メニュー内</span></div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-warning"><i class="bi bi-bar-chart-fill"></i></div>
+        <div>
+          <div class="feature-title">アクセス数 Top 10 グラフ</div>
+          <div class="feature-desc">全ビューの中でアクセス数が多い上位10件を横棒グラフで表示します。よく使われているコンテンツが一目でわかります。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 計算フィールド -->
+  <div class="card section-card" id="fields">
+    <div class="card-header"><i class="bi bi-calculator-fill text-danger me-2"></i>計算フィールドタブ <span class="badge bg-secondary ms-2">メニュー内</span></div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-danger"><i class="bi bi-download"></i></div>
+        <div>
+          <div class="feature-title">ワークブック選択 → フィールド解析</div>
+          <div class="feature-desc">
+            WBを選択すると .twb/.twbx をダウンロードして計算フィールドを抽出します。<br>
+            <ul class="step-list">
+              <li>計算フィールド一覧（フィールド名・数式・データソース）</li>
+              <li>フィールド間の依存関係をサンキーチャートで可視化</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 差分比較 -->
+  <div class="card section-card" id="diff">
+    <div class="card-header"><i class="bi bi-git text-primary me-2"></i>差分比較タブ <span class="badge bg-secondary ms-2">メニュー内</span></div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-primary"><i class="bi bi-info-circle"></i></div>
+        <div>
+          <div class="feature-title">比較タイミング</div>
+          <div class="feature-desc">
+            <strong>前回 Refresh</strong> 時のデータ vs <strong>今回 Refresh</strong> 時のデータを比較します。<br>
+            初回は「まだスナップショットがありません」と表示され、2回目の Refresh 後から差分が確認できます。
+          </div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#1a5c2a"><i class="bi bi-plus-circle-fill"></i></div>
+        <div>
+          <div class="feature-title">🟢 新規追加セクション</div>
+          <div class="feature-desc">前回以降に新しく追加されたWB・DS・フロー・ユーザーを表示します。</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#7a5800"><i class="bi bi-pencil-fill"></i></div>
+        <div>
+          <div class="feature-title">🟡 更新セクション</div>
+          <div class="feature-desc">
+            変更があったアイテムを、何がどう変わったか（旧値 → 新値）で表示します。<br>
+            <ul class="step-list">
+              <li>ワークブック（設定変更）: 名前・プロジェクト・オーナーの変更</li>
+              <li>ワークブック（シート変更）: シートの追加・削除</li>
+              <li>計算フィールド [KTW監視]: KTWタグWBの計算フィールド追加・削除・数式変更</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon" style="color:#8b1a1a"><i class="bi bi-dash-circle-fill"></i></div>
+        <div>
+          <div class="feature-title">🔴 削除セクション</div>
+          <div class="feature-desc">前回以降に削除されたWB・DS・フロー・ユーザーを表示します。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KTW監視 -->
+  <div class="card section-card" id="ktw">
+    <div class="card-header"><i class="bi bi-tag-fill text-success me-2"></i>KTW監視タグ</div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-success"><i class="bi bi-tag"></i></div>
+        <div>
+          <div class="feature-title">KTWタグの付け方</div>
+          <div class="feature-desc">
+            Tableau Cloud でワークブックに <code>KTW</code> タグをつけると、そのWBが計算フィールド監視対象になります。<br>
+            <ul class="step-list">
+              <li>Tableau Cloud の WB 詳細ページ → 「タグを追加」→ <code>KTW</code> と入力</li>
+              <li>最大10件まで監視対象に登録できます</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-icon text-primary"><i class="bi bi-arrow-clockwise"></i></div>
+        <div>
+          <div class="feature-title">自動スキャンのタイミング</div>
+          <div class="feature-desc">Refresh ボタンを押すたびに、バックグラウンドで KTWタグWBをダウンロードして計算フィールドを比較します。差分は差分比較タブに反映されます。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- メンテナンス -->
+  <div class="card section-card" id="maintenance">
+    <div class="card-header"><i class="bi bi-tools me-2 text-secondary"></i>定期メンテナンス</div>
+    <div class="card-body p-0">
+      <div class="feature-row">
+        <div class="feature-icon text-secondary"><i class="bi bi-file-earmark-text"></i></div>
+        <div>
+          <div class="feature-title">maintenance.py の実行</div>
+          <div class="feature-desc">
+            隔週でメンテナンスレポートを生成するスクリプトです。
+            <ul class="step-list">
+              <li>実行: <code>python maintenance.py</code></li>
+              <li>出力: <code>reports/maintenance_YYYY-MM-DD.md</code></li>
+              <li>確認内容: 180日未更新WB / 90日未ログインUser / KTW監視WBリスト / 未認定DS</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center text-muted small py-3">Tableau Cloud Manager — ヘルプページ</div>
+</div>
+
+<a href="/" class="btn btn-primary back-btn"><i class="bi bi-arrow-left me-1"></i>アプリに戻る</a>
+
+</body>
+</html>
