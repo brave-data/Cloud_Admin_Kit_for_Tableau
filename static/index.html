@@ -371,9 +371,10 @@
     <button class="btn btn-sm btn-outline-light px-2" onclick="toggleDarkMode()" id="btn-dark" title="ダーク/ライトモード切替">
       <i class="bi bi-moon-fill" id="dark-icon" style="font-size:0.85rem"></i>
     </button>
-    <a href="/static/help.html" target="_blank" class="btn btn-sm btn-outline-light px-2" title="使い方ガイド">
-      <i class="bi bi-question-circle" style="font-size:0.85rem"></i>
-    </a>
+    <button class="btn btn-sm btn-outline-light px-2 position-relative" onclick="switchToSection('maintenance');renderMaintenancePage()" id="btn-maintenance" title="メンテナンス">
+      <i class="bi bi-tools" style="font-size:0.85rem"></i>
+      <span id="maintenance-nav-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;background:#e67e22;border-radius:50%;border:1.5px solid #1a2a4a"></span>
+    </button>
     <button id="btn-refresh" class="btn btn-sm btn-outline-light" onclick="triggerRefresh()">
       <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="refresh">更新</span>
     </button>
@@ -469,10 +470,6 @@
     </a></li>
     <li class="nav-item"><a class="nav-link" href="#" onclick="event.preventDefault();switchToSection('help')">
       <i class="bi bi-question-circle me-1"></i><span data-i18n="nav_help">使い方</span>
-    </a></li>
-    <li class="nav-item"><a class="nav-link" href="#" id="nav-maintenance" onclick="event.preventDefault();switchToSection('maintenance');renderMaintenancePage()">
-      <i class="bi bi-tools me-1"></i><span data-i18n="nav_maintenance">メンテナンス</span>
-      <span id="maintenance-nav-badge" class="badge ms-1 py-0 px-1" style="font-size:.65rem;display:none;background:#e67e22;color:#fff"></span>
     </a></li>
   </ul>
 
@@ -1546,7 +1543,7 @@ function switchToSection(section) {
 
   // navタブのアクティブ状態を同期
   document.querySelectorAll('#mainTab .nav-link').forEach(l => l.classList.remove('active'));
-  const NAV_SECTIONS = { schedules: 0, topviews: 1, fields: 2, diff: 3, help: 4, maintenance: 5 };
+  const NAV_SECTIONS = { schedules: 0, topviews: 1, fields: 2, diff: 3, help: 4 };
   if (section in NAV_SECTIONS) {
     document.querySelectorAll('#mainTab .nav-link')[NAV_SECTIONS[section]]?.classList.add('active');
   }
@@ -2077,6 +2074,20 @@ async function triggerRefresh() {
 // 起動時ポーリング開始
 _pollTimer = setInterval(pollStatus, 2000);
 pollStatus();
+
+// 起動時にメンテナンスバッジだけサイレントチェック
+(async () => {
+  try {
+    const report = await fetchJSON('/api/maintenance-report');
+    if (!report.error) {
+      const warn = report.api_version?.needs_update ||
+                   (report.outdated_packages || []).length > 0 ||
+                   (report.git_status?.behind || 0) > 0;
+      const badge = document.getElementById('maintenance-nav-badge');
+      if (badge) badge.style.display = warn ? '' : 'none';
+    }
+  } catch(_) {}
+})();
 
 // ============================================================
 // 計算フィールド分析
