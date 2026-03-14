@@ -467,6 +467,13 @@
       <i class="bi bi-git me-1"></i><span data-i18n="nav_diff">差分比較</span>
       <span id="diff-nav-badge" class="badge ms-1 py-0 px-1" style="font-size:.65rem;display:none"></span>
     </a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="event.preventDefault();switchToSection('help')">
+      <i class="bi bi-question-circle me-1"></i><span data-i18n="nav_help">使い方</span>
+    </a></li>
+    <li class="nav-item"><a class="nav-link" href="#" id="nav-maintenance" onclick="event.preventDefault();switchToSection('maintenance');renderMaintenancePage()">
+      <i class="bi bi-tools me-1"></i><span data-i18n="nav_maintenance">メンテナンス</span>
+      <span id="maintenance-nav-badge" class="badge ms-1 py-0 px-1" style="font-size:.65rem;display:none;background:#e67e22;color:#fff"></span>
+    </a></li>
   </ul>
 
   <div class="tab-content">
@@ -646,6 +653,146 @@
       </div>
     </div>
 
+    <!-- ── 使い方タブ ─────────────────────────── -->
+    <div class="tab-pane fade" id="tab-help">
+      <div class="card border-0 shadow-sm p-4">
+        <h5 class="fw-bold mb-4"><i class="bi bi-question-circle-fill text-primary me-2"></i><span data-i18n="nav_help">使い方</span></h5>
+        <div class="accordion" id="helpAccordion">
+
+          <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-dash">
+                <i class="bi bi-speedometer2 me-2 text-primary"></i>ダッシュボード（トップ画面）
+              </button>
+            </h2>
+            <div id="help-dash" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body small">
+                <p>ページ上部のサマリーカードにTableau Cloudサイト全体の統計が表示されます。</p>
+                <ul>
+                  <li><strong>各カードをクリック</strong>すると、対応する一覧タブへ移動します</li>
+                  <li><strong>右上の「更新」ボタン</strong>を押すとTableau CloudのAPIからデータを再取得します（初回は必ず押してください）</li>
+                  <li><strong>180日以上未閲覧 / 90日以上未ログイン</strong>のカードは要注意コンテンツ数を示します</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-wb">
+                <i class="bi bi-journal-richtext me-2" style="color:#2F5B94"></i>ワークブック / データソース / ビュー / ユーザー / Prepフロー
+              </button>
+            </h2>
+            <div id="help-wb" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body small">
+                <ul>
+                  <li>各タブはサマリーカードのクリック、またはナビタブから開けます</li>
+                  <li>テーブルの<strong>列ヘッダーをクリック</strong>でソート、検索ボックスでフィルタできます</li>
+                  <li>ワークブック行の<strong>「フィールド分析」ボタン</strong>を押すと計算フィールド分析タブへジャンプします</li>
+                  <li>「認定済み」バッジはデータソースの品質認定状態を示します</li>
+                  <li>「タグ」列に <code>KTW</code> タグがついたワークブックは差分比較の監視対象になります</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-schedules">
+                <i class="bi bi-calendar-check me-2 text-success"></i>スケジュール管理
+              </button>
+            </h2>
+            <div id="help-schedules" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body small">
+                <p>Tableau Cloudに設定されているデータ更新スケジュール一覧です。</p>
+                <ul>
+                  <li>「次回実行」列の<span class="badge bg-danger">期限超過</span>バッジは更新が止まっている可能性を示します</li>
+                  <li>更新種別（完全更新 / 増分更新）がアイコンで区別されます</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-fields">
+                <i class="bi bi-diagram-3 me-2 text-primary"></i>計算フィールド分析
+              </button>
+            </h2>
+            <div id="help-fields" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body small">
+                <p>ワークブックをダウンロードして計算フィールドの依存関係を可視化します。</p>
+                <ul>
+                  <li>ワークブック一覧の「フィールド分析」ボタン、またはこのタブのドロップダウンからWBを選択します</li>
+                  <li><strong>Sankeyチャート</strong>でフィールド間の依存関係を視覚的に確認できます</li>
+                  <li>分析結果はキャッシュされるため、2回目以降は即時表示されます</li>
+                  <li><code>KTW</code>タグ付きWBは更新ボタン押下時に自動スキャンされ、計算フィールドの追加・削除・数式変更が差分タブに表示されます</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-diff">
+                <i class="bi bi-git me-2 text-warning"></i>差分比較
+              </button>
+            </h2>
+            <div id="help-diff" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body small">
+                <p>「前回の更新」と「今回の更新」の間に何が変わったかを表示します。</p>
+                <ul>
+                  <li><strong>🟢 新規追加</strong>：前回になかったWB・DS・フロー・ユーザー</li>
+                  <li><strong>🟡 更新</strong>：名前・プロジェクト・シート構成・KTW計算フィールドの変化</li>
+                  <li><strong>🔴 削除</strong>：前回あったが今回なくなったもの</li>
+                  <li>更新ボタンを2回以上押すと差分が表示されます（初回は比較元がないため表示されません）</li>
+                  <li><code>KTW</code>タグ付きWBは計算フィールドの変化も「計算フィールド [KTW監視]」カテゴリに表示されます</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item border mb-2 rounded">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-maintenance">
+                <i class="bi bi-tools me-2" style="color:#e67e22"></i>メンテナンス
+              </button>
+            </h2>
+            <div id="help-maintenance" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body small">
+                <p>隔週（毎月1日・15日 9:00）に自動実行されるシステム健全性チェックの結果を表示します。</p>
+                <ul>
+                  <li>Tableau REST APIバージョンの互換性確認</li>
+                  <li>Pythonパッケージの更新確認（tableauserverclient・fastapi等）</li>
+                  <li>GitHubリポジトリとのズレ確認</li>
+                  <li>「今すぐチェック」ボタンで手動実行も可能です</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- accordion -->
+      </div>
+    </div>
+
+    <!-- ── メンテナンスタブ ─────────────────────────── -->
+    <div class="tab-pane fade" id="tab-maintenance">
+      <div class="card border-0 shadow-sm p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="fw-bold mb-0"><i class="bi bi-tools me-2" style="color:#e67e22"></i><span data-i18n="nav_maintenance">メンテナンス</span></h5>
+          <button class="btn btn-sm btn-outline-secondary" onclick="renderMaintenancePage(true)">
+            <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="maintenance_refresh">今すぐチェック</span>
+          </button>
+        </div>
+        <div id="maintenance-content">
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-tools fs-1 d-block mb-3 opacity-25"></i>
+            <div data-i18n="maintenance_no_report">レポートがまだありません。スケジュールタスクが隔週で自動実行されます。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- tab-content -->
 </div><!-- main-content -->
 
@@ -712,6 +859,15 @@ const I18N = {
     th_target: '対象', th_refresh_type: '更新種別',
     th_frequency: '頻度', th_next_run: '次回実行',
     nav_diff: '差分比較',
+    nav_help: '使い方',
+    nav_maintenance: 'メンテナンス',
+    maintenance_refresh: '今すぐチェック',
+    maintenance_no_report: 'レポートがまだありません。スケジュールタスクが隔週で自動実行されます。',
+    maintenance_generated: '生成日時',
+    maintenance_api: 'REST APIバージョン',
+    maintenance_packages: 'パッケージ更新',
+    maintenance_git: 'Gitステータス',
+    maintenance_recommendations: '推奨アクション',
     diff_no_snapshot_hint: '更新ボタンを押すと、次回以降に差分を確認できます。',
     diff_compared_to: '前回比較:',
     diff_new_section: '🟢 新規追加', diff_changed_section: '🟡 更新', diff_deleted_section: '🔴 削除',
@@ -752,6 +908,15 @@ const I18N = {
     th_target: 'Target', th_refresh_type: 'Refresh Type',
     th_frequency: 'Frequency', th_next_run: 'Next Run',
     nav_diff: 'Changes',
+    nav_help: 'Help',
+    nav_maintenance: 'Maintenance',
+    maintenance_refresh: 'Check Now',
+    maintenance_no_report: 'No report yet. A scheduled task runs automatically every two weeks.',
+    maintenance_generated: 'Generated',
+    maintenance_api: 'REST API Version',
+    maintenance_packages: 'Package Updates',
+    maintenance_git: 'Git Status',
+    maintenance_recommendations: 'Recommendations',
     diff_no_snapshot_hint: 'Click Refresh to start tracking changes.',
     diff_compared_to: 'Compared to:',
     diff_new_section: '🟢 New', diff_changed_section: '🟡 Updated', diff_deleted_section: '🔴 Deleted',
@@ -1240,6 +1405,75 @@ function renderDiffTab(snap) {
   `;
 }
 
+// ============================================================
+// メンテナンスページ
+// ============================================================
+async function renderMaintenancePage(forceRefresh = false) {
+  const el = document.getElementById('maintenance-content');
+  const t  = I18N[window._lang || 'ja'];
+  el.innerHTML = `<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>チェック中...</div>`;
+  try {
+    const report = await fetchJSON('/api/maintenance-report');
+    if (report.error) {
+      el.innerHTML = `<div class="alert alert-secondary">${esc(report.error)}</div>`;
+      return;
+    }
+    const apiOk  = !report.api_version?.needs_update;
+    const pkgCnt = (report.outdated_packages || []).length;
+    const gitBehind = report.git_status?.behind || 0;
+    const badge = document.getElementById('maintenance-nav-badge');
+    const warn  = !apiOk || pkgCnt > 0 || gitBehind > 0;
+    if (badge) { badge.textContent = warn ? '!' : ''; badge.style.display = warn ? '' : 'none'; }
+
+    el.innerHTML = `
+      <div class="text-muted small mb-3"><i class="bi bi-clock me-1"></i>${t.maintenance_generated}: <strong>${report.generated_at || '—'}</strong></div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <div class="card border-0 bg-light p-3 h-100">
+            <div class="fw-semibold mb-2"><i class="bi bi-cloud-check me-1"></i>${t.maintenance_api}</div>
+            <div class="small">
+              <div>現在: <code>${report.api_version?.current || '—'}</code></div>
+              <div>最新: <code>${report.api_version?.latest_known || '不明'}</code></div>
+              <div class="mt-1">${apiOk
+                ? '<span class="badge bg-success">最新</span>'
+                : '<span class="badge bg-warning text-dark">アップデート推奨</span>'}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card border-0 bg-light p-3 h-100">
+            <div class="fw-semibold mb-2"><i class="bi bi-box-seam me-1"></i>${t.maintenance_packages}</div>
+            ${pkgCnt === 0
+              ? '<div class="small text-success"><i class="bi bi-check-circle me-1"></i>すべて最新</div>'
+              : `<ul class="small mb-0 ps-3">${(report.outdated_packages || []).map(p =>
+                  `<li><code>${esc(p.name)}</code> ${esc(p.current)} → <strong>${esc(p.latest)}</strong></li>`).join('')}</ul>`}
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card border-0 bg-light p-3 h-100">
+            <div class="fw-semibold mb-2"><i class="bi bi-github me-1"></i>${t.maintenance_git}</div>
+            <div class="small">
+              <div>ブランチ: <code>${report.git_status?.branch || 'main'}</code></div>
+              <div>最新コミット: <code>${esc(report.git_status?.last_commit || '—')}</code></div>
+              ${gitBehind > 0 ? `<div class="text-warning mt-1"><i class="bi bi-exclamation-triangle me-1"></i>${gitBehind}件リモートが先行</div>` : '<div class="text-success mt-1"><i class="bi bi-check-circle me-1"></i>同期済み</div>'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${(report.recommendations || []).length
+        ? `<div class="card border-warning border-opacity-50 p-3">
+            <div class="fw-semibold mb-2 text-warning"><i class="bi bi-lightbulb me-1"></i>${t.maintenance_recommendations}</div>
+            <ul class="small mb-0 ps-3">${report.recommendations.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
+           </div>`
+        : `<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle-fill me-1"></i>問題は見つかりませんでした。</div>`}
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-secondary">${t.maintenance_no_report}</div>`;
+  }
+}
+
 function fmtDate(iso) {
   if (!iso) return '—';
   return iso.slice(0, 10);
@@ -1312,13 +1546,13 @@ function switchToSection(section) {
 
   // navタブのアクティブ状態を同期
   document.querySelectorAll('#mainTab .nav-link').forEach(l => l.classList.remove('active'));
-  const NAV_SECTIONS = { schedules: 0, topviews: 1, fields: 2, diff: 3 };
+  const NAV_SECTIONS = { schedules: 0, topviews: 1, fields: 2, diff: 3, help: 4, maintenance: 5 };
   if (section in NAV_SECTIONS) {
     document.querySelectorAll('#mainTab .nav-link')[NAV_SECTIONS[section]]?.classList.add('active');
   }
 
   // タブペインを直接 CSS クラスで切り替え（Bootstrap Tab API はナビ親要素が必要なため回避）
-  const ALL_PANES = ['wb', 'ds', 'views', 'users', 'flows', 'schedules', 'topviews', 'fields', 'diff'];
+  const ALL_PANES = ['wb', 'ds', 'views', 'users', 'flows', 'schedules', 'topviews', 'fields', 'diff', 'help', 'maintenance'];
   ALL_PANES.forEach(id => {
     const pane = document.getElementById('tab-' + id);
     if (!pane) return;

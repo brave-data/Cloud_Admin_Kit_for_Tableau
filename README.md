@@ -1,160 +1,173 @@
 # Tableau Cloud Manager
 
-Tableau Cloud の管理情報をブラウザで一覧・分析できるローカル Web アプリです。
-Python + FastAPI で動作し、セットアップは 5 分で完了します。
+A local web app for browsing, analyzing, and monitoring your Tableau Cloud site — built with Python + FastAPI, running entirely on your machine.
+
+> **Japanese README**: このドキュメントの日本語版は [README_ja.md](README_ja.md) を参照してください。
 
 ---
 
-## 画面イメージ
+## Features
 
-| タブ | 内容 |
-|------|------|
-| **ワークブック** | 全ワークブック・プロジェクト・オーナー・更新日・サイズ・タグ |
-| **データソース** | 公開データソース・認定状態・更新日 |
-| **ビュー（使用状況）** | 全ビューの累計アクセス数 |
-| **ユーザー** | ライセンス別一覧・最終ログイン日・未ログイン日数 |
-| **ジョブ** | 最近のエクストラクト更新ジョブとその成否 |
-| **Top ビュー** | アクセス数 Top 10 の横棒グラフ |
+| Tab | Description |
+|-----|-------------|
+| **Workbooks** | Full list with project, owner, last updated, size, tags |
+| **Data Sources** | Published data sources with certification status |
+| **Views** | All views with cumulative usage counts |
+| **Users** | License breakdown, last login, inactive days |
+| **Prep Flows** | Flow list with last run status |
+| **Schedules** | Extract refresh schedules and next run times |
+| **Top Views** | Bar chart of top 10 most-viewed content |
+| **Calc Field Analysis** | Download a workbook and visualize calculated field dependencies (Sankey chart) |
+| **Changes (Diff)** | Compare current vs. previous refresh — new/updated/deleted items, sheet changes, and KTW-tagged workbook field changes |
+| **Help** | In-app usage guide |
+| **Maintenance** | Biweekly system health report (API version, package updates, Git status) |
 
-サマリカードでは **ワークブック数 / DS 数 / ユーザー数 / 180 日以上未更新コンテンツ / 90 日以上未ログインユーザー** を一目で確認できます。
+**Summary cards** show at a glance: workbook count / data source count / user count / content not viewed in 180+ days / users inactive for 90+ days.
 
 ---
 
-## セットアップ
+## Requirements
 
-### 前提
-- Python 3.10 以上
-- Git（VS Code の Source Control 機能でも可）
+- Python 3.10+
+- A Tableau Cloud site with a Personal Access Token (PAT)
 
-### 1. リポジトリをクローン
+---
+
+## Setup
+
+### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/tableau-cloud-manager.git
-cd tableau-cloud-manager
+git clone https://github.com/brave-data/Tableau_Cloud_Manager.git
+cd Tableau_Cloud_Manager
 ```
 
-VS Code を使う場合:
-1. `Ctrl+Shift+P` → "Git: Clone" を選択
-2. リポジトリ URL を貼り付け
-3. クローン先フォルダを選択
-
----
-
-### 2. 仮想環境を作成・有効化
+### 2. Create and activate a virtual environment
 
 ```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-
 # Mac / Linux
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
+
+# Windows
+python -m venv venv
+venv\Scripts\activate
 ```
 
----
-
-### 3. 依存パッケージをインストール
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-### 4. 環境変数を設定
+### 4. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-`.env` をテキストエディタで開き、以下を入力します:
+Edit `.env` with your Tableau Cloud credentials:
 
 ```ini
-TABLEAU_SERVER_URL=https://10ay.online.tableau.com   # あなたの Tableau Cloud URL
-TABLEAU_SITE_NAME=mycompany                          # サイト名（デフォルトサイトは空欄）
-TABLEAU_TOKEN_NAME=my-pat-name                       # PAT の名前
-TABLEAU_TOKEN_SECRET=xxxxxxxxxxxxxxxxxxxx            # PAT のシークレット
+TABLEAU_SERVER_URL=https://10ay.online.tableau.com   # Your Tableau Cloud URL
+TABLEAU_SITE_NAME=mycompany                          # Site name (leave blank for Default site)
+TABLEAU_TOKEN_NAME=my-pat-name                       # PAT name
+TABLEAU_TOKEN_SECRET=xxxxxxxxxxxxxxxxxxxx            # PAT secret
 ```
 
-**Personal Access Token の作成手順:**
-1. Tableau Cloud にログイン
-2. 右上のアカウントメニュー → **「アカウント設定」**
-3. **「Personal Access Tokens」** セクション → **「トークンの作成」**
-4. 名前を入力して作成 → シークレットをコピー（一度しか表示されません）
+**How to create a Personal Access Token:**
+1. Log in to Tableau Cloud
+2. Click your account menu (top right) → **Account Settings**
+3. Scroll to **Personal Access Tokens** → **Create Token**
+4. Enter a name → copy the secret (shown only once)
 
----
-
-### 5. アプリを起動
+### 5. Start the app
 
 ```bash
 python main.py
 ```
 
-ブラウザで → **http://localhost:8000** を開く
+Open your browser at → **http://localhost:8000**
 
-起動直後は Tableau Cloud からのデータ取得中の画面が表示されます。
-データ量によりますが、通常 **10〜30 秒** で読み込み完了します。
-
----
-
-## 定期更新
-
-### 方法 A: 画面上の「更新」ボタン
-ブラウザ右上の **「↻ 更新」** ボタンをクリックすると最新データを取得します。
-
-### 方法 B: cron（Mac / Linux）
-
-```bash
-# 毎朝 8 時に自動起動（アプリが停止している場合は起動）
-0 8 * * 1-5 cd /path/to/tableau-cloud-manager && .venv/bin/python main.py
-```
-
-### 方法 C: Windows タスクスケジューラ
-1. タスクスケジューラを開く
-2. 「基本タスクの作成」→ スケジュールを設定
-3. 操作: `python main.py`（作業フォルダをプロジェクトルートに設定）
+On first launch, click the **Refresh** button (top right) to pull data from Tableau Cloud. This typically takes 10–30 seconds depending on site size.
 
 ---
 
-## ファイル構成
+## KTW Tag — Calculated Field Monitoring
+
+Tag any workbook with `KTW` in Tableau Cloud to enable automatic calculated field monitoring.
+
+- On every **Refresh**, the app downloads up to **10 KTW-tagged workbooks** and extracts their calculated fields
+- Differences (field added / removed / formula changed) appear in the **Changes tab** under the "Calc Fields [KTW Watch]" category
+- Results are stored locally in the browser (`localStorage`) and compared across sessions
+
+---
+
+## Maintenance Schedule
+
+A biweekly scheduled task (1st and 15th of each month at 09:00) runs automatically and writes `maintenance_report.json` to the project root. The **Maintenance tab** in the app displays:
+
+- Tableau REST API version compatibility check
+- Outdated Python packages (tableauserverclient, fastapi, uvicorn, etc.)
+- Git sync status with the remote repository
+- Actionable recommendations
+
+You can also trigger it manually from the Maintenance tab.
+
+---
+
+## File Structure
 
 ```
-tableau-cloud-manager/
-├── main.py              # FastAPI サーバー（エントリポイント）
-├── tableau_client.py    # Tableau Cloud REST API クライアント
-├── requirements.txt     # Python 依存パッケージ
-├── .env.example         # 環境変数テンプレート
-├── .gitignore           # .env などを Git 管理対象外に
-├── README.md            # このファイル
+Tableau_Cloud_Manager/
+├── main.py                  # FastAPI server (entry point)
+├── tableau_client.py        # Tableau Cloud REST API client
+├── requirements.txt         # Python dependencies
+├── .env.example             # Environment variable template
+├── .gitignore               # Excludes .env and venv from Git
+├── maintenance_report.json  # Generated by the biweekly maintenance task
+├── README.md                # This file (English)
 └── static/
-    └── index.html       # ブラウザ UI（Bootstrap + DataTables）
+    └── index.html           # Single-page UI (Bootstrap 5 + DataTables)
 ```
 
 ---
 
-## API エンドポイント
+## API Endpoints
 
-アプリ起動中は `http://localhost:8000/docs` で Swagger UI も使えます。
+Swagger UI is available at `http://localhost:8000/docs` while the app is running.
 
-| エンドポイント | 説明 |
-|---|---|
-| `GET /api/status` | 取得状態・最終更新日時 |
-| `GET /api/summary` | サマリ統計 |
-| `GET /api/workbooks` | ワークブック一覧 |
-| `GET /api/datasources` | データソース一覧 |
-| `GET /api/views` | ビュー一覧（使用状況付き） |
-| `GET /api/users` | ユーザー一覧 |
-| `GET /api/jobs` | ジョブ履歴 |
-| `POST /api/refresh` | Tableau Cloud から再取得 |
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/status` | Fetch status and last updated timestamp |
+| `GET /api/summary` | Site-wide summary statistics |
+| `GET /api/workbooks` | Workbook list |
+| `GET /api/datasources` | Data source list |
+| `GET /api/views` | View list with usage counts |
+| `GET /api/users` | User list |
+| `GET /api/flows` | Prep flow list |
+| `GET /api/schedules` | Refresh schedule list |
+| `GET /api/workbooks/{id}/fields` | Calculated field analysis for a workbook |
+| `GET /api/ktw-fields` | Calculated fields for all KTW-tagged workbooks (up to 10) |
+| `GET /api/maintenance-report` | Latest maintenance report |
+| `POST /api/refresh` | Trigger data re-fetch from Tableau Cloud |
 
 ---
 
-## トラブルシューティング
+## Troubleshooting
 
-| 症状 | 対処 |
-|------|------|
-| 「接続に失敗しました」と表示される | `.env` の URL / トークン名 / シークレットを再確認 |
-| データが 0 件になるタブがある | サイトのコンテンツが空の可能性あり（正常） |
-| ポート 8000 が使えない | `.env` に `PORT=8080` を追加して再起動 |
-| SSL エラーが出る | `tableau_client.py` の `"verify": True` を `False` に変更（社内 Proxy 環境） |
+| Symptom | Solution |
+|---------|----------|
+| "Connection failed" error | Double-check `.env` URL, token name, and secret |
+| A tab shows 0 items | The site may have no content for that type (expected) |
+| Port 8000 already in use | Add `PORT=8080` to `.env` and restart |
+| SSL error (corporate proxy) | Set `verify=False` in `tableau_client.py` (not recommended for production) |
+
+---
+
+## Tech Stack
+
+- **Backend**: Python 3.10+, FastAPI, uvicorn, tableauserverclient
+- **Frontend**: Bootstrap 5.3, Bootstrap Icons, DataTables 1.13, D3.js (Sankey)
+- **Data persistence**: Browser `localStorage` for diff snapshots
+- **Scheduling**: Claude Code scheduled tasks (biweekly maintenance)
