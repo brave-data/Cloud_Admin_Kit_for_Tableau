@@ -190,7 +190,7 @@ def fetch_all() -> dict[str, Any]:
         # ── 抽出スケジュール ──────────────────────────────────
         schedules = []
         try:
-            tasks_raw = list(TSC.Pager(server.extract_refresh_tasks))
+            tasks_raw = list(TSC.Pager(server.tasks))
             for task in tasks_raw:
                 content_name = ""
                 content_type = ""
@@ -254,7 +254,7 @@ def fetch_all() -> dict[str, Any]:
         flow_run_map: dict[str, object] = {}
         try:
             run_req = TSC.RequestOptions(pagesize=100)
-            recent_runs, _ = server.flow_runs.get(run_req)
+            recent_runs = server.flow_runs.get(run_req)
             for run in recent_runs:
                 fid = getattr(run, "flow_id", None)
                 completed = getattr(run, "completed_at", None)

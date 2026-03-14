@@ -2031,6 +2031,17 @@ async function pollStatus() {
       document.getElementById('main-content').style.display   = 'block';
       document.getElementById('btn-refresh').disabled = false;
       await loadAll();
+    } else if (data.status === 'idle') {
+      // 初回起動 — データ未取得。オーバーレイを消して更新を促す
+      clearInterval(_pollTimer);
+      _pollTimer = null;
+      document.getElementById('loading-overlay').style.display = 'none';
+      document.getElementById('main-content').style.display   = 'block';
+      document.getElementById('btn-refresh').disabled = false;
+      const alertBar = document.getElementById('alert-bar');
+      alertBar.className = 'alert alert-info alert-dismissible d-flex align-items-center gap-2 mb-0 rounded-0';
+      document.getElementById('alert-msg').textContent = '右上の「↻ 更新」を押してTableau Cloudからデータを取得してください。';
+      alertBar.style.display = 'flex';
     } else if (data.status === 'error') {
       clearInterval(_pollTimer);
       _pollTimer = null;
@@ -2039,9 +2050,8 @@ async function pollStatus() {
       document.getElementById('alert-msg').textContent   = data.error;
       document.getElementById('btn-refresh').disabled = false;
     } else {
-      // loading / idle — keep polling
-      document.getElementById('loading-msg').textContent =
-        data.status === 'loading' ? 'Tableau Cloud からデータを取得中...' : '待機中...';
+      // loading — keep polling
+      document.getElementById('loading-msg').textContent = 'Tableau Cloud からデータを取得中...';
     }
   } catch (e) {
     console.error('pollStatus failed:', e);
