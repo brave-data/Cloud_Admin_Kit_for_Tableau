@@ -150,6 +150,28 @@
   [data-theme="dark"] code { color: var(--text-muted2); background: transparent; }
   [data-theme="dark"] .fw-semibold, [data-theme="dark"] .fw-bold { color: var(--text-body); }
   [data-theme="dark"] small { color: var(--text-muted2); }
+  /* Accordion dark mode */
+  [data-theme="dark"] .accordion-item {
+    background-color: var(--bg-card);
+    border-color: var(--border-subtle) !important;
+    color: var(--text-body);
+  }
+  [data-theme="dark"] .accordion-button {
+    background-color: var(--bg-card);
+    color: var(--text-body);
+    box-shadow: none;
+  }
+  [data-theme="dark"] .accordion-button:not(.collapsed) {
+    background-color: var(--bg-detail);
+    color: var(--text-body);
+  }
+  [data-theme="dark"] .accordion-button::after {
+    filter: invert(1);
+  }
+  [data-theme="dark"] .accordion-body {
+    background-color: var(--bg-card);
+    color: var(--text-body);
+  }
   /* 詳細パネル内のテキスト */
   [data-theme="dark"] .wb-detail-panel { color: var(--text-body); }
   [data-theme="dark"] .wb-detail-panel .text-secondary,
@@ -659,17 +681,27 @@
           <div class="accordion-item border mb-2 rounded">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-dash">
-                <i class="bi bi-speedometer2 me-2 text-primary"></i>ダッシュボード（トップ画面）
+                <i class="bi bi-speedometer2 me-2 text-primary"></i><span data-i18n="help_dash_title">ダッシュボード（トップ画面）</span>
               </button>
             </h2>
             <div id="help-dash" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
               <div class="accordion-body small">
-                <p>ページ上部のサマリーカードにTableau Cloudサイト全体の統計が表示されます。</p>
-                <ul>
-                  <li><strong>各カードをクリック</strong>すると、対応する一覧タブへ移動します</li>
-                  <li><strong>右上の「更新」ボタン</strong>を押すとTableau CloudのAPIからデータを再取得します（初回は必ず押してください）</li>
-                  <li><strong>180日以上未閲覧 / 90日以上未ログイン</strong>のカードは要注意コンテンツ数を示します</li>
-                </ul>
+                <div class="lang-ja">
+                  <p>ページ上部のサマリーカードにTableau Cloudサイト全体の統計が表示されます。</p>
+                  <ul>
+                    <li><strong>各カードをクリック</strong>すると、対応する一覧タブへ移動します</li>
+                    <li><strong>右上の「更新」ボタン</strong>を押すとTableau CloudのAPIからデータを再取得します（初回は必ず押してください）</li>
+                    <li><strong>180日以上未閲覧 / 90日以上未ログイン</strong>のカードは要注意コンテンツ数を示します</li>
+                  </ul>
+                </div>
+                <div class="lang-en d-none">
+                  <p>Summary cards at the top show site-wide statistics from your Tableau Cloud site.</p>
+                  <ul>
+                    <li><strong>Click any card</strong> to navigate to the corresponding list tab</li>
+                    <li><strong>Click ↻ Refresh</strong> to fetch fresh data from the Tableau Cloud API (required on first use)</li>
+                    <li>The <strong>Not Viewed 180+ Days</strong> and <strong>Inactive 90+ Days</strong> cards highlight content at risk</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -677,18 +709,29 @@
           <div class="accordion-item border mb-2 rounded">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-wb">
-                <i class="bi bi-journal-richtext me-2" style="color:#2F5B94"></i>ワークブック / データソース / ビュー / ユーザー / Prepフロー
+                <i class="bi bi-journal-richtext me-2" style="color:#2F5B94"></i><span data-i18n="help_wb_title">ワークブック / データソース / ビュー / ユーザー / Prepフロー</span>
               </button>
             </h2>
             <div id="help-wb" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
               <div class="accordion-body small">
-                <ul>
-                  <li>各タブはサマリーカードのクリック、またはナビタブから開けます</li>
-                  <li>テーブルの<strong>列ヘッダーをクリック</strong>でソート、検索ボックスでフィルタできます</li>
-                  <li>ワークブック行の<strong>「フィールド分析」ボタン</strong>を押すと計算フィールド分析タブへジャンプします</li>
-                  <li>「認定済み」バッジはデータソースの品質認定状態を示します</li>
-                  <li>「タグ」列に <code>KTW</code> タグがついたワークブックは差分比較の監視対象になります</li>
-                </ul>
+                <div class="lang-ja">
+                  <ul>
+                    <li>各タブはサマリーカードのクリック、またはナビタブから開けます</li>
+                    <li>テーブルの<strong>列ヘッダーをクリック</strong>でソート、検索ボックスでフィルタできます</li>
+                    <li>ワークブック行の<strong>「フィールド分析」ボタン</strong>を押すと計算フィールド分析タブへジャンプします</li>
+                    <li>「認定済み」バッジはデータソースの品質認定状態を示します</li>
+                    <li>「タグ」列に <code>KTW</code> タグがついたワークブックは差分比較の監視対象になります</li>
+                  </ul>
+                </div>
+                <div class="lang-en d-none">
+                  <ul>
+                    <li>Open tabs by clicking summary cards or the navigation tabs</li>
+                    <li><strong>Click column headers</strong> to sort; use the search box to filter</li>
+                    <li>Click the <strong>Analyze Fields</strong> button on a workbook row to jump to the Calculated Fields tab</li>
+                    <li>The <strong>Certified</strong> badge reflects the data quality certification status of a data source</li>
+                    <li>Workbooks tagged <code>KTW</code> are monitored for calculated field changes in the Changes tab</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -696,16 +739,25 @@
           <div class="accordion-item border mb-2 rounded">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-schedules">
-                <i class="bi bi-calendar-check me-2 text-success"></i>スケジュール管理
+                <i class="bi bi-calendar-check me-2 text-success"></i><span data-i18n="help_schedules_title">スケジュール管理</span>
               </button>
             </h2>
             <div id="help-schedules" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
               <div class="accordion-body small">
-                <p>Tableau Cloudに設定されているデータ更新スケジュール一覧です。</p>
-                <ul>
-                  <li>「次回実行」列の<span class="badge bg-danger">期限超過</span>バッジは更新が止まっている可能性を示します</li>
-                  <li>更新種別（完全更新 / 増分更新）がアイコンで区別されます</li>
-                </ul>
+                <div class="lang-ja">
+                  <p>Tableau Cloudに設定されているデータ更新スケジュール一覧です。</p>
+                  <ul>
+                    <li>「次回実行」列の<span class="badge bg-danger">期限超過</span>バッジは更新が止まっている可能性を示します</li>
+                    <li>更新種別（完全更新 / 差分更新）がアイコンで区別されます</li>
+                  </ul>
+                </div>
+                <div class="lang-en d-none">
+                  <p>Lists all data refresh schedules configured in Tableau Cloud.</p>
+                  <ul>
+                    <li>An <span class="badge bg-danger">Overdue</span> badge in the Next Run column indicates a potentially stalled refresh</li>
+                    <li>Refresh type (Full Refresh / Incremental) is shown as a badge</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -713,18 +765,29 @@
           <div class="accordion-item border mb-2 rounded">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-fields">
-                <i class="bi bi-diagram-3 me-2 text-primary"></i>計算フィールド分析
+                <i class="bi bi-diagram-3 me-2 text-primary"></i><span data-i18n="help_fields_title">計算フィールド分析</span>
               </button>
             </h2>
             <div id="help-fields" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
               <div class="accordion-body small">
-                <p>ワークブックをダウンロードして計算フィールドの依存関係を可視化します。</p>
-                <ul>
-                  <li>ワークブック一覧の「フィールド分析」ボタン、またはこのタブのドロップダウンからWBを選択します</li>
-                  <li><strong>Sankeyチャート</strong>でフィールド間の依存関係を視覚的に確認できます</li>
-                  <li>分析結果はキャッシュされるため、2回目以降は即時表示されます</li>
-                  <li><code>KTW</code>タグ付きWBは更新ボタン押下時に自動スキャンされ、計算フィールドの追加・削除・数式変更が差分タブに表示されます</li>
-                </ul>
+                <div class="lang-ja">
+                  <p>ワークブックをダウンロードして計算フィールドの依存関係を可視化します。</p>
+                  <ul>
+                    <li>ワークブック一覧の「フィールド分析」ボタン、またはこのタブのドロップダウンからWBを選択します</li>
+                    <li><strong>Sankeyチャート</strong>でフィールド間の依存関係を視覚的に確認できます</li>
+                    <li>分析結果はキャッシュされるため、2回目以降は即時表示されます</li>
+                    <li><code>KTW</code>タグ付きWBは更新ボタン押下時に自動スキャンされ、計算フィールドの追加・削除・数式変更が差分タブに表示されます</li>
+                  </ul>
+                </div>
+                <div class="lang-en d-none">
+                  <p>Downloads a workbook and visualizes calculated field dependencies.</p>
+                  <ul>
+                    <li>Select a workbook using the Analyze Fields button in the workbook list or the dropdown in this tab</li>
+                    <li>The <strong>Sankey chart</strong> shows field dependency relationships visually</li>
+                    <li>Results are cached — subsequent runs are instant</li>
+                    <li>Workbooks tagged <code>KTW</code> are auto-scanned on Refresh; field additions, deletions, and formula changes appear in the Changes tab</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -732,19 +795,31 @@
           <div class="accordion-item border mb-2 rounded">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-diff">
-                <i class="bi bi-git me-2 text-warning"></i>差分比較
+                <i class="bi bi-git me-2 text-warning"></i><span data-i18n="help_diff_title">差分比較</span>
               </button>
             </h2>
             <div id="help-diff" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
               <div class="accordion-body small">
-                <p>「前回の更新」と「今回の更新」の間に何が変わったかを表示します。</p>
-                <ul>
-                  <li><strong>🟢 新規追加</strong>：前回になかったWB・DS・フロー・ユーザー</li>
-                  <li><strong>🟡 更新</strong>：名前・プロジェクト・シート構成・KTW計算フィールドの変化</li>
-                  <li><strong>🔴 削除</strong>：前回あったが今回なくなったもの</li>
-                  <li>更新ボタンを2回以上押すと差分が表示されます（初回は比較元がないため表示されません）</li>
-                  <li><code>KTW</code>タグ付きWBは計算フィールドの変化も「計算フィールド [KTW監視]」カテゴリに表示されます</li>
-                </ul>
+                <div class="lang-ja">
+                  <p>「前日」と「今回の更新」の間に何が変わったかを表示します。</p>
+                  <ul>
+                    <li><strong>🟢 新規追加</strong>：前回になかったWB・DS・フロー・ユーザー</li>
+                    <li><strong>🟡 更新</strong>：名前・プロジェクト・シート構成・KTW計算フィールドの変化</li>
+                    <li><strong>🔴 削除</strong>：前回あったが今回なくなったもの</li>
+                    <li>初日は比較元がないため表示されません。翌日以降に差分が表示されます</li>
+                    <li><code>KTW</code>タグ付きWBは計算フィールドの変化も「計算フィールド [KTW監視]」カテゴリに表示されます</li>
+                  </ul>
+                </div>
+                <div class="lang-en d-none">
+                  <p>Shows what changed between the previous day's snapshot and the current data.</p>
+                  <ul>
+                    <li><strong>🟢 New</strong>: workbooks, data sources, flows, or users that didn't exist before</li>
+                    <li><strong>🟡 Updated</strong>: name, project, sheet structure, or KTW field changes</li>
+                    <li><strong>🔴 Deleted</strong>: items that existed previously but are now gone</li>
+                    <li>No diff is shown on the first day — comparison requires a previous day's baseline</li>
+                    <li>Workbooks tagged <code>KTW</code> also show calculated field changes under the "Calc Fields [KTW Watch]" category</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -752,18 +827,29 @@
           <div class="accordion-item border mb-2 rounded">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-maintenance">
-                <i class="bi bi-tools me-2" style="color:#e67e22"></i>メンテナンス
+                <i class="bi bi-tools me-2" style="color:#e67e22"></i><span data-i18n="help_maintenance_title">メンテナンス</span>
               </button>
             </h2>
             <div id="help-maintenance" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
               <div class="accordion-body small">
-                <p>隔週（毎月1日・15日 9:00）に自動実行されるシステム健全性チェックの結果を表示します。</p>
-                <ul>
-                  <li>Tableau REST APIバージョンの互換性確認</li>
-                  <li>Pythonパッケージの更新確認（tableauserverclient・fastapi等）</li>
-                  <li>GitHubリポジトリとのズレ確認</li>
-                  <li>「今すぐチェック」ボタンで手動実行も可能です</li>
-                </ul>
+                <div class="lang-ja">
+                  <p>隔週（毎月1日・15日 9:00）に自動実行されるシステム健全性チェックの結果を表示します。</p>
+                  <ul>
+                    <li>Tableau REST APIバージョンの互換性確認</li>
+                    <li>Pythonパッケージの更新確認（tableauserverclient・fastapi等）</li>
+                    <li>GitHubリポジトリとのズレ確認</li>
+                    <li>「今すぐチェック」ボタンで手動実行も可能です</li>
+                  </ul>
+                </div>
+                <div class="lang-en d-none">
+                  <p>Shows the result of automated system health checks, run biweekly (1st and 15th of each month at 9:00 AM).</p>
+                  <ul>
+                    <li>Tableau REST API version compatibility check</li>
+                    <li>Python package update check (tableauserverclient, fastapi, etc.)</li>
+                    <li>GitHub repository sync status</li>
+                    <li>Use the <strong>Check Now</strong> button to run manually at any time</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -866,7 +952,6 @@ const I18N = {
     maintenance_git: 'Gitステータス',
     maintenance_recommendations: '推奨アクション',
     diff_no_snapshot_hint: '更新ボタンを押すと、次回以降に差分を確認できます。',
-    diff_compared_to: '前回比較:',
     diff_new_section: '🟢 新規追加', diff_changed_section: '🟡 更新', diff_deleted_section: '🔴 削除',
     diff_cat_wb: 'ワークブック', diff_cat_wb_content: 'ワークブック（シート変更）',
     diff_cat_ktw: '計算フィールド [KTW監視]',
@@ -878,6 +963,58 @@ const I18N = {
     diff_item_cert_changed: '認定状態変更',
     diff_item_role_changed: 'ライセンス変更',
     diff_item_login_changed: '最終ログイン更新',
+    // age / cert badges
+    age_unknown: '不明',
+    age_days_suffix: '日',
+    cert_yes: '認定済み',
+    cert_no: '未認定',
+    // schedule frequency
+    freq_hourly: '毎時', freq_daily: '毎日', freq_weekly: '毎週', freq_monthly: '毎月',
+    // count suffix
+    count_suffix: '件',
+    // help accordion titles
+    help_dash_title: 'ダッシュボード（トップ画面）',
+    help_wb_title: 'ワークブック / データソース / ビュー / ユーザー / Prepフロー',
+    help_schedules_title: 'スケジュール管理',
+    help_fields_title: '計算フィールド分析',
+    help_diff_title: '差分比較',
+    help_maintenance_title: 'メンテナンス',
+    diff_compared_yesterday: '前日比較:',
+    diff_compared_recent: '直近履歴比較:',
+    // maintenance
+    maintenance_checking: 'チェック中...',
+    maintenance_current: '現在',
+    maintenance_latest_known: '最新',
+    maintenance_unknown: '不明',
+    maintenance_up_to_date: '最新',
+    maintenance_needs_update: 'アップデート推奨',
+    maintenance_all_latest: 'すべて最新',
+    maintenance_git_branch: 'ブランチ',
+    maintenance_git_commit: '最新コミット',
+    maintenance_git_synced: '同期済み',
+    maintenance_git_behind: '件リモートが先行',
+    maintenance_no_issues: '問題は見つかりませんでした。',
+    // refresh type badges
+    badge_full_refresh: '完全更新',
+    badge_incremental: '差分更新',
+    // poll status
+    fetched_label: '最終更新: ',
+    idle_hint: '右上の「↻ 更新」を押してTableau Cloudからデータを取得してください。',
+    // DS detail panel
+    ds_info_title: 'データソース情報',
+    ds_info_type: 'タイプ', ds_info_certified: '認定',
+    ds_info_project: 'プロジェクト', ds_info_owner: 'オーナー',
+    ds_info_last_updated: '最終更新',
+    ds_connected_wbs: '接続ワークブック',
+    // misc UI strings
+    chart_no_data: 'データなし',
+    loading_msg: 'Tableau Cloud からデータを取得中...',
+    err_load_failed: 'データの読み込みに失敗しました: ',
+    err_analyze_failed: 'ワークブック分析に失敗しました: ',
+    wb_select_placeholder: '-- 選択してください --',
+    wb_select_alert: 'ワークブックを選択してください',
+    sankey_no_deps: '依存関係なし',
+    sankey_render_err: '図の描画に失敗しました',
   },
   en: {
     refresh: 'Refresh',
@@ -915,7 +1052,6 @@ const I18N = {
     maintenance_git: 'Git Status',
     maintenance_recommendations: 'Recommendations',
     diff_no_snapshot_hint: 'Click Refresh to start tracking changes.',
-    diff_compared_to: 'Compared to:',
     diff_new_section: '🟢 New', diff_changed_section: '🟡 Updated', diff_deleted_section: '🔴 Deleted',
     diff_cat_wb: 'Workbooks', diff_cat_wb_content: 'Workbooks (Sheet Changes)',
     diff_cat_ktw: 'Calc Fields [KTW Watch]',
@@ -927,6 +1063,58 @@ const I18N = {
     diff_item_cert_changed: 'Certification changed',
     diff_item_role_changed: 'License changed',
     diff_item_login_changed: 'Last login updated',
+    // age / cert badges
+    age_unknown: 'Unknown',
+    age_days_suffix: 'd',
+    cert_yes: 'Certified',
+    cert_no: 'Not certified',
+    // schedule frequency
+    freq_hourly: 'Hourly', freq_daily: 'Daily', freq_weekly: 'Weekly', freq_monthly: 'Monthly',
+    // count suffix
+    count_suffix: '',
+    // help accordion titles
+    help_dash_title: 'Dashboard (Overview)',
+    help_wb_title: 'Workbooks / Data Sources / Views / Users / Prep Flows',
+    help_schedules_title: 'Schedules',
+    help_fields_title: 'Calculated Fields',
+    help_diff_title: 'Changes',
+    help_maintenance_title: 'Maintenance',
+    diff_compared_yesterday: 'Yesterday:',
+    diff_compared_recent: 'Recent snapshot:',
+    // maintenance
+    maintenance_checking: 'Checking...',
+    maintenance_current: 'Current',
+    maintenance_latest_known: 'Latest',
+    maintenance_unknown: 'Unknown',
+    maintenance_up_to_date: 'Up to date',
+    maintenance_needs_update: 'Update recommended',
+    maintenance_all_latest: 'All up to date',
+    maintenance_git_branch: 'Branch',
+    maintenance_git_commit: 'Latest commit',
+    maintenance_git_synced: 'In sync',
+    maintenance_git_behind: 'commits behind',
+    maintenance_no_issues: 'No issues found.',
+    // refresh type badges
+    badge_full_refresh: 'Full Refresh',
+    badge_incremental: 'Incremental',
+    // poll status
+    fetched_label: 'Last updated: ',
+    idle_hint: 'Click ↻ Refresh to fetch data from Tableau Cloud.',
+    // DS detail panel
+    ds_info_title: 'Data Source Info',
+    ds_info_type: 'Type', ds_info_certified: 'Certified',
+    ds_info_project: 'Project', ds_info_owner: 'Owner',
+    ds_info_last_updated: 'Last Updated',
+    ds_connected_wbs: 'Connected Workbooks',
+    // misc UI strings
+    chart_no_data: 'No data',
+    loading_msg: 'Fetching data from Tableau Cloud...',
+    err_load_failed: 'Failed to load data: ',
+    err_analyze_failed: 'Workbook analysis failed: ',
+    wb_select_placeholder: '-- Select a workbook --',
+    wb_select_alert: 'Please select a workbook',
+    sankey_no_deps: 'No dependencies',
+    sankey_render_err: 'Failed to render diagram',
   },
 };
 
@@ -940,6 +1128,10 @@ function applyLang(lang) {
   });
   document.getElementById('lang-label').textContent = lang === 'ja' ? 'EN' : 'JA';
   document.documentElement.lang = lang;
+
+  // ヘルプページの言語ブロック切り替え
+  document.querySelectorAll('.lang-ja').forEach(el => el.classList.toggle('d-none', lang !== 'ja'));
+  document.querySelectorAll('.lang-en').forEach(el => el.classList.toggle('d-none', lang !== 'en'));
 
   // DataTables が初期化済みであれば再レンダリングして言語を反映
   if (window._allData) {
@@ -997,7 +1189,14 @@ const KTW_PREV_KEY = 'tcm_ktw_prev';
 function rotateKtwSnapshot(data) {
   try {
     const cur = localStorage.getItem(KTW_CUR_KEY);
-    if (cur) localStorage.setItem(KTW_PREV_KEY, cur);
+    if (cur) {
+      const parsed = JSON.parse(cur);
+      const curDate   = new Date(parsed.ts).toDateString();
+      const todayDate = new Date().toDateString();
+      if (curDate !== todayDate) {
+        localStorage.setItem(KTW_PREV_KEY, cur);
+      }
+    }
     localStorage.setItem(KTW_CUR_KEY, JSON.stringify({ ts: Date.now(), wbs: data }));
   } catch(e) { console.warn('ktw snapshot save failed:', e); }
 }
@@ -1044,11 +1243,19 @@ async function fetchKtwFields() {
   }
 }
 
-/** スナップショットをローテーション: cur→prev, 今回データ→cur */
+/** スナップショットをローテーション: 前日以前のデータのみ prev に昇格、今回データ→cur */
 function rotateSnapshot(data) {
   try {
     const cur = localStorage.getItem(SNAP_CUR_KEY);
-    if (cur) localStorage.setItem(SNAP_PREV_KEY, cur);
+    if (cur) {
+      const parsed = JSON.parse(cur);
+      const curDate   = new Date(parsed.ts).toDateString();
+      const todayDate = new Date().toDateString();
+      // 前日以前のスナップショットのみ prev として保存（同日の更新は上書きしない）
+      if (curDate !== todayDate) {
+        localStorage.setItem(SNAP_PREV_KEY, cur);
+      }
+    }
     const snap = {
       ts: Date.now(),
       wb:    data.wb.map(r    => ({ id: r.id, name: r.name, project: r.project, owner: r.owner })),
@@ -1135,6 +1342,12 @@ function renderDiffTab(snap) {
 
   const t = I18N[window._lang || 'ja'];
 
+  // 比較ラベル: 前日のスナップショットか直近履歴かを判定
+  const snapTs       = snap.ts ? new Date(snap.ts) : null;
+  const yesterday    = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday  = snapTs && snapTs.toDateString() === yesterday.toDateString();
+  const compLabel    = isYesterday ? t.diff_compared_yesterday : t.diff_compared_recent;
+
   // 差分計算
   const wbDiff   = computeDiff(d.wb,    snap.wb    || [], ['name','project','owner']);
   const dsDiff   = computeDiff(d.ds,    snap.ds    || [], ['name','project','owner','certified']);
@@ -1165,7 +1378,7 @@ function renderDiffTab(snap) {
   const totalNew     = wbDiff.added.length   + dsDiff.added.length   + flDiff.added.length   + usrDiff.added.length;
   const totalChanged = wbDiff.changed.length + dsDiff.changed.length + flDiff.changed.length + usrDiff.changed.length + wbWithViewChanges.length + ktwChangedLen;
   const totalDeleted = wbDiff.deleted.length + dsDiff.deleted.length + flDiff.deleted.length + usrDiff.deleted.length;
-  const snapDate     = snap.ts ? new Date(snap.ts).toLocaleString('ja-JP') : '—';
+  const snapDate     = snap.ts ? new Date(snap.ts).toLocaleString(window._lang === 'en' ? 'en-US' : 'ja-JP') : '—';
 
   // ナビバッジ更新
   const navBadge = document.getElementById('diff-nav-badge');
@@ -1183,11 +1396,12 @@ function renderDiffTab(snap) {
   function buildCategoryHTML(icon, label, items, buildItemHTML) {
     if (!items.length) return '';
     const rows = items.map(buildItemHTML).join('');
+    const cs = t.count_suffix;
     return `
       <div class="diff-category">
         <div class="diff-category-header" onclick="this.nextElementSibling.classList.toggle('d-none')">
           <i class="bi ${icon} me-1"></i>${label}
-          <span class="diff-cat-count">${items.length}件</span>
+          <span class="diff-cat-count">${items.length}${cs}</span>
           <i class="bi bi-chevron-down ms-2" style="font-size:.7rem;opacity:.5"></i>
         </div>
         <div class="diff-item-list">${rows}</div>
@@ -1320,7 +1534,7 @@ function renderDiffTab(snap) {
       <div class="diff-section-header" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('d-none')">
         <i class="bi bi-chevron-down diff-section-chevron"></i>
         ${sectionLabel}
-        <span class="diff-count">${count}件</span>
+        <span class="diff-count">${count}${t.count_suffix}</span>
       </div>
       <div class="diff-body">${categoriesHTML}</div>
     </div>`;
@@ -1387,11 +1601,11 @@ function renderDiffTab(snap) {
     <!-- 比較メタ情報 -->
     <div class="diff-meta-bar">
       <i class="bi bi-git text-primary"></i>
-      <span class="text-muted small">${t.diff_compared_to} <strong>${snapDate}</strong></span>
+      <span class="text-muted small">${compLabel} <strong>${snapDate}</strong></span>
       <div class="diff-badge-group ms-auto">
-        ${totalNew     ? `<span class="diff-stat-badge new">🟢 ${t.diff_new_section.replace('🟢 ','')} <strong>${totalNew}</strong>件</span>` : ''}
-        ${totalChanged ? `<span class="diff-stat-badge changed">🟡 ${t.diff_changed_section.replace('🟡 ','')} <strong>${totalChanged}</strong>件</span>` : ''}
-        ${totalDeleted ? `<span class="diff-stat-badge deleted">🔴 ${t.diff_deleted_section.replace('🔴 ','')} <strong>${totalDeleted}</strong>件</span>` : ''}
+        ${totalNew     ? `<span class="diff-stat-badge new">🟢 ${t.diff_new_section.replace('🟢 ','')} <strong>${totalNew}</strong>${t.count_suffix}</span>` : ''}
+        ${totalChanged ? `<span class="diff-stat-badge changed">🟡 ${t.diff_changed_section.replace('🟡 ','')} <strong>${totalChanged}</strong>${t.count_suffix}</span>` : ''}
+        ${totalDeleted ? `<span class="diff-stat-badge deleted">🔴 ${t.diff_deleted_section.replace('🔴 ','')} <strong>${totalDeleted}</strong>${t.count_suffix}</span>` : ''}
         ${total === 0  ? `<span class="diff-stat-badge new">✔ ${t.diff_no_changes}</span>` : ''}
       </div>
     </div>
@@ -1408,7 +1622,7 @@ function renderDiffTab(snap) {
 async function renderMaintenancePage(forceRefresh = false) {
   const el = document.getElementById('maintenance-content');
   const t  = I18N[window._lang || 'ja'];
-  el.innerHTML = `<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>チェック中...</div>`;
+  el.innerHTML = `<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>${t.maintenance_checking}</div>`;
   try {
     const report = await fetchJSON('/api/maintenance-report');
     if (report.error) {
@@ -1430,11 +1644,11 @@ async function renderMaintenancePage(forceRefresh = false) {
           <div class="card border-0 bg-light p-3 h-100">
             <div class="fw-semibold mb-2"><i class="bi bi-cloud-check me-1"></i>${t.maintenance_api}</div>
             <div class="small">
-              <div>現在: <code>${report.api_version?.current || '—'}</code></div>
-              <div>最新: <code>${report.api_version?.latest_known || '不明'}</code></div>
+              <div>${t.maintenance_current}: <code>${report.api_version?.current || '—'}</code></div>
+              <div>${t.maintenance_latest_known}: <code>${report.api_version?.latest_known || t.maintenance_unknown}</code></div>
               <div class="mt-1">${apiOk
-                ? '<span class="badge bg-success">最新</span>'
-                : '<span class="badge bg-warning text-dark">アップデート推奨</span>'}</div>
+                ? `<span class="badge bg-success">${t.maintenance_up_to_date}</span>`
+                : `<span class="badge bg-warning text-dark">${t.maintenance_needs_update}</span>`}</div>
             </div>
           </div>
         </div>
@@ -1442,7 +1656,7 @@ async function renderMaintenancePage(forceRefresh = false) {
           <div class="card border-0 bg-light p-3 h-100">
             <div class="fw-semibold mb-2"><i class="bi bi-box-seam me-1"></i>${t.maintenance_packages}</div>
             ${pkgCnt === 0
-              ? '<div class="small text-success"><i class="bi bi-check-circle me-1"></i>すべて最新</div>'
+              ? `<div class="small text-success"><i class="bi bi-check-circle me-1"></i>${t.maintenance_all_latest}</div>`
               : `<ul class="small mb-0 ps-3">${(report.outdated_packages || []).map(p =>
                   `<li><code>${esc(p.name)}</code> ${esc(p.current)} → <strong>${esc(p.latest)}</strong></li>`).join('')}</ul>`}
           </div>
@@ -1451,9 +1665,9 @@ async function renderMaintenancePage(forceRefresh = false) {
           <div class="card border-0 bg-light p-3 h-100">
             <div class="fw-semibold mb-2"><i class="bi bi-github me-1"></i>${t.maintenance_git}</div>
             <div class="small">
-              <div>ブランチ: <code>${report.git_status?.branch || 'main'}</code></div>
-              <div>最新コミット: <code>${esc(report.git_status?.last_commit || '—')}</code></div>
-              ${gitBehind > 0 ? `<div class="text-warning mt-1"><i class="bi bi-exclamation-triangle me-1"></i>${gitBehind}件リモートが先行</div>` : '<div class="text-success mt-1"><i class="bi bi-check-circle me-1"></i>同期済み</div>'}
+              <div>${t.maintenance_git_branch}: <code>${report.git_status?.branch || 'main'}</code></div>
+              <div>${t.maintenance_git_commit}: <code>${esc(report.git_status?.last_commit || '—')}</code></div>
+              ${gitBehind > 0 ? `<div class="text-warning mt-1"><i class="bi bi-exclamation-triangle me-1"></i>${gitBehind} ${t.maintenance_git_behind}</div>` : `<div class="text-success mt-1"><i class="bi bi-check-circle me-1"></i>${t.maintenance_git_synced}</div>`}
             </div>
           </div>
         </div>
@@ -1464,7 +1678,7 @@ async function renderMaintenancePage(forceRefresh = false) {
             <div class="fw-semibold mb-2 text-warning"><i class="bi bi-lightbulb me-1"></i>${t.maintenance_recommendations}</div>
             <ul class="small mb-0 ps-3">${report.recommendations.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
            </div>`
-        : `<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle-fill me-1"></i>問題は見つかりませんでした。</div>`}
+        : `<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle-fill me-1"></i>${t.maintenance_no_issues}</div>`}
     `;
   } catch(e) {
     el.innerHTML = `<div class="alert alert-secondary">${t.maintenance_no_report}</div>`;
@@ -1478,21 +1692,23 @@ function fmtDate(iso) {
 
 /** days を受け取り、threshold 超えなら警告バッジを返す */
 function ageBadge(days, threshold) {
-  if (days === null || days === undefined) return '<span class="badge badge-uncert">不明</span>';
-  if (days > threshold) return `<span class="badge badge-stale">${days}日</span>`;
-  return `<span class="badge badge-fresh">${days}日</span>`;
+  const t = I18N[window._lang || 'ja'];
+  if (days === null || days === undefined) return `<span class="badge badge-uncert">${t.age_unknown}</span>`;
+  if (days > threshold) return `<span class="badge badge-stale">${days}${t.age_days_suffix}</span>`;
+  return `<span class="badge badge-fresh">${days}${t.age_days_suffix}</span>`;
 }
 
 function certBadge(certified) {
+  const t = I18N[window._lang || 'ja'];
   return certified
-    ? '<span class="badge badge-certified"><i class="bi bi-patch-check-fill me-1"></i>認定済み</span>'
-    : '<span class="badge badge-uncert">未認定</span>';
+    ? `<span class="badge badge-certified"><i class="bi bi-patch-check-fill me-1"></i>${t.cert_yes}</span>`
+    : `<span class="badge badge-uncert">${t.cert_no}</span>`;
 }
 
 function jobBadge(code) {
   return code === 0
-    ? '<span class="badge badge-ok"><i class="bi bi-check-circle me-1"></i>成功</span>'
-    : '<span class="badge badge-fail"><i class="bi bi-x-circle me-1"></i>失敗</span>';
+    ? '<span class="badge badge-ok"><i class="bi bi-check-circle me-1"></i>OK</span>'
+    : '<span class="badge badge-fail"><i class="bi bi-x-circle me-1"></i>NG</span>';
 }
 
 function initTable(id, order, opts) {
@@ -1685,6 +1901,7 @@ function renderDatasources(rows) {
 /** データソース行クリック時の詳細パネル HTML（接続ワークブックを即時表示） */
 function buildDsDetailHTML(dsId) {
   const ds = _dsRows[dsId] || {};
+  const tl = I18N[window._lang || 'ja'];
 
   // 同プロジェクトのワークブックをフィルタ（API 呼び出し不要）
   const connected = Object.values(_wbRows).filter(wb => wb.project === ds.project);
@@ -1701,10 +1918,10 @@ function buildDsDetailHTML(dsId) {
           ${ageBadge(wb.days_stale, 180)}${linkBtn}
         </div>`;
       }).join('')
-    : '<span class="text-muted small">同プロジェクトのワークブックなし</span>';
+    : `<span class="text-muted small">${tl.ds_info_project} ${esc(ds.project || '—')} — no workbooks</span>`;
 
   const certRow = ds.cert_note
-    ? `<tr><th class="text-muted fw-normal py-0 pe-2" style="white-space:nowrap">認定コメント</th><td class="py-0"><small>${esc(ds.cert_note)}</small></td></tr>`
+    ? `<tr><th class="text-muted fw-normal py-0 pe-2" style="white-space:nowrap">${tl.ds_info_certified}</th><td class="py-0"><small>${esc(ds.cert_note)}</small></td></tr>`
     : '';
   const descRow = ds.description
     ? `<tr><th class="text-muted fw-normal py-0 pe-2">説明</th><td class="py-0"><small class="text-muted">${esc(ds.description)}</small></td></tr>`
@@ -1713,26 +1930,26 @@ function buildDsDetailHTML(dsId) {
   return `<div class="wb-detail-panel">
     <div class="row g-0 p-3 pt-2">
 
-      <!-- データソース情報 -->
+      <!-- DS info -->
       <div class="col-md-4 pe-3 border-end">
         <div class="text-secondary fw-semibold mb-2" style="font-size:0.78rem">
-          <i class="bi bi-info-circle me-1"></i>データソース情報
+          <i class="bi bi-info-circle me-1"></i>${tl.ds_info_title}
         </div>
         <table class="table table-sm mb-0" style="font-size:0.8rem;border-color:#e9ecef">
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">タイプ</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.type || '—')}</td></tr>
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">認定</th><td class="py-1" style="border-bottom-color:#e9ecef">${certBadge(ds.certified)}</td></tr>
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">プロジェクト</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.project || '—')}</td></tr>
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">オーナー</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.owner || '—')}</td></tr>
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">最終更新</th><td class="py-1" style="border-bottom-color:#e9ecef">${fmtDate(ds.updated_at)}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_type}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.type || '—')}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_certified}</th><td class="py-1" style="border-bottom-color:#e9ecef">${certBadge(ds.certified)}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_project}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.project || '—')}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_owner}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.owner || '—')}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_last_updated}</th><td class="py-1" style="border-bottom-color:#e9ecef">${fmtDate(ds.updated_at)}</td></tr>
           ${certRow}${descRow}
         </table>
       </div>
 
-      <!-- 接続ワークブック -->
+      <!-- Connected workbooks -->
       <div class="col-md-8 ps-3">
         <div class="text-secondary fw-semibold mb-1" style="font-size:0.78rem">
-          <i class="bi bi-journal-richtext me-1"></i>接続ワークブック（${connected.length}件）
-          <small class="text-muted ms-1 fw-normal">同プロジェクト: ${esc(ds.project || '—')}</small>
+          <i class="bi bi-journal-richtext me-1"></i>${tl.ds_connected_wbs}（${connected.length}件）
+          <small class="text-muted ms-1 fw-normal">${tl.ds_info_project}: ${esc(ds.project || '—')}</small>
         </div>
         <div style="max-height:200px;overflow-y:auto">
           ${wbListHTML}
@@ -1888,15 +2105,17 @@ function buildFlowDetailHTML(flowId, data) {
   </div>`;
 }
 
-/** 頻度を日本語に変換 */
+/** 頻度ラベルを i18n で返す */
 function fmtFrequency(f) {
-  return { Hourly: '毎時', Daily: '毎日', Weekly: '毎週', Monthly: '毎月' }[f] || (f || '—');
+  const t = I18N[window._lang || 'ja'];
+  return { Hourly: t.freq_hourly, Daily: t.freq_daily, Weekly: t.freq_weekly, Monthly: t.freq_monthly }[f] || (f || '—');
 }
 
 /** 更新種別バッジ */
-function refreshTypeBadge(t) {
-  if (t === 'FullRefresh')        return '<span class="badge" style="background:#2F5B94;font-size:.72rem">完全更新</span>';
-  if (t === 'IncrementalRefresh') return '<span class="badge bg-secondary" style="font-size:.72rem">差分更新</span>';
+function refreshTypeBadge(type) {
+  const lang = I18N[window._lang || 'ja'];
+  if (type === 'FullRefresh')        return `<span class="badge" style="background:#2F5B94;font-size:.72rem">${lang.badge_full_refresh}</span>`;
+  if (type === 'IncrementalRefresh') return `<span class="badge bg-secondary" style="font-size:.72rem">${lang.badge_incremental}</span>`;
   return '<span class="text-muted">—</span>';
 }
 
@@ -1922,7 +2141,8 @@ function renderSchedules(rows) {
     const typeIcon = r.content_type === 'datasource'
       ? `<i class="bi bi-database-fill me-1" style="color:#4C9AED"></i>`
       : `<i class="bi bi-journal-richtext me-1" style="color:#2F5B94"></i>`;
-    const typeLabel = r.content_type === 'datasource' ? 'データソース' : 'ワークブック';
+    const _tl = I18N[window._lang || 'ja'];
+    const typeLabel = r.content_type === 'datasource' ? _tl.lbl_ds : _tl.lbl_wb;
     return `<tr>
       <td class="fw-semibold">${typeIcon}${esc(r.content_name || '—')}</td>
       <td><small class="text-muted">${typeLabel}</small></td>
@@ -1937,7 +2157,7 @@ function renderSchedules(rows) {
 }
 
 function renderTopViews(top) {
-  if (!top || top.length === 0) { document.getElementById('top-views-chart').innerHTML = 'データなし'; return; }
+  if (!top || top.length === 0) { document.getElementById('top-views-chart').innerHTML = I18N[window._lang || 'ja'].chart_no_data; return; }
   const max = top[0].total_views || 1;
   document.getElementById('top-views-chart').innerHTML = top.map((v, i) => `
     <div class="d-flex align-items-center mb-2 gap-2">
@@ -1971,7 +2191,7 @@ async function loadAll() {
     ]);
 
     // スナップショットをローテーション: cur→prev, 今回データ→cur
-    rotateSnapshot({ wb, ds, flows, users });
+    rotateSnapshot({ wb, ds, flows, users, views });
 
     // 言語切替時の再レンダリングのためにグローバル保存
     window._allData = { wb, ds, views, users, schedules, flows, summary };
@@ -2008,7 +2228,7 @@ async function loadAll() {
   } catch (e) {
     console.error('loadAll failed:', e);
     document.getElementById('alert-bar').style.display = 'block';
-    document.getElementById('alert-msg').textContent = 'データの読み込みに失敗しました: ' + e.message;
+    document.getElementById('alert-msg').textContent = (I18N[window._lang || 'ja'].err_load_failed) + e.message;
   }
 }
 
@@ -2016,9 +2236,10 @@ async function pollStatus() {
   try {
     const data = await fetchJSON('/api/status');
 
+    const _t = I18N[window._lang || 'ja'];
     document.getElementById('fetched-label').textContent =
       data.fetched_at
-        ? '最終更新: ' + new Date(data.fetched_at).toLocaleString('ja-JP')
+        ? _t.fetched_label + new Date(data.fetched_at).toLocaleString(window._lang === 'en' ? 'en-US' : 'ja-JP')
         : '';
 
     if (data.status === 'ok') {
@@ -2037,7 +2258,7 @@ async function pollStatus() {
       document.getElementById('btn-refresh').disabled = false;
       const alertBar = document.getElementById('alert-bar');
       alertBar.className = 'alert alert-info alert-dismissible d-flex align-items-center gap-2 mb-0 rounded-0';
-      document.getElementById('alert-msg').textContent = '右上の「↻ 更新」を押してTableau Cloudからデータを取得してください。';
+      document.getElementById('alert-msg').textContent = _t.idle_hint;
       alertBar.style.display = 'flex';
     } else if (data.status === 'error') {
       clearInterval(_pollTimer);
@@ -2048,7 +2269,7 @@ async function pollStatus() {
       document.getElementById('btn-refresh').disabled = false;
     } else {
       // loading — keep polling
-      document.getElementById('loading-msg').textContent = 'Tableau Cloud からデータを取得中...';
+      document.getElementById('loading-msg').textContent = _t.loading_msg;
     }
   } catch (e) {
     console.error('pollStatus failed:', e);
@@ -2103,7 +2324,7 @@ const DS_PALETTE = [
 /** ワークブック一覧からドロップダウンを構築 */
 function populateWbDropdown(workbooks) {
   const sel = document.getElementById('wb-select-fields');
-  sel.innerHTML = '<option value="">-- 選択してください --</option>';
+  sel.innerHTML = `<option value="">${I18N[window._lang || 'ja'].wb_select_placeholder}</option>`;
   workbooks.forEach(wb => {
     const opt = document.createElement('option');
     opt.value = wb.id;
@@ -2115,7 +2336,7 @@ function populateWbDropdown(workbooks) {
 /** 分析ボタン押下 */
 async function analyzeWorkbook() {
   const wbId = document.getElementById('wb-select-fields').value;
-  if (!wbId) { alert('ワークブックを選択してください'); return; }
+  if (!wbId) { alert(I18N[window._lang || 'ja'].wb_select_alert); return; }
 
   const btnAnalyze = document.getElementById('btn-analyze');
   btnAnalyze.disabled = true;
@@ -2143,7 +2364,7 @@ async function analyzeWorkbook() {
     console.error('analyzeWorkbook failed:', e);
     document.getElementById('fields-loading').style.display = 'none';
     document.getElementById('alert-bar').style.display = 'block';
-    document.getElementById('alert-msg').textContent = 'ワークブック分析に失敗しました: ' + e.message;
+    document.getElementById('alert-msg').textContent = I18N[window._lang || 'ja'].err_analyze_failed + e.message;
   } finally {
     btnAnalyze.disabled = false;
   }
@@ -2433,7 +2654,7 @@ function buildWbDetailHTML(wbId, data) {
   // --- Sankey エリア ---
   const sankeyAreaHTML = edges.length
     ? `<div id="detail-sankey-${esc(wbId)}" style="position:relative;min-height:180px"></div>`
-    : `<div class="text-muted small pt-2"><i class="bi bi-diagram-3 me-1"></i>フィールド間の依存関係なし</div>`;
+    : `<div class="text-muted small pt-2"><i class="bi bi-diagram-3 me-1"></i>${I18N[window._lang || 'ja'].sankey_no_deps}</div>`;
 
   return `<div class="wb-detail-panel">
     ${descHTML}
@@ -2481,10 +2702,11 @@ function renderDetailSankey(wbId, edges, fields) {
   d3.select(el).selectAll('*').remove();
 
   if (!edges || edges.length === 0) {
-    el.innerHTML = '<span class="text-muted small">依存関係なし</span>';
+    el.innerHTML = `<span class="text-muted small">${I18N[window._lang || 'ja'].sankey_no_deps}</span>`;
     return;
   }
 
+  const isDark   = document.documentElement.getAttribute('data-theme') === 'dark';
   const dsNames  = [...new Set((fields || []).map(f => f.datasource))];
   const dsColors = Object.fromEntries(dsNames.map((n, i) => [n, DS_PALETTE[i % DS_PALETTE.length]]));
   const fieldDs  = Object.fromEntries((fields || []).map(f => [f.field, f.datasource]));
@@ -2527,7 +2749,7 @@ function renderDetailSankey(wbId, edges, fields) {
       links: links.map(d => ({ ...d })),
     });
   } catch (_) {
-    el.innerHTML = '<span class="text-muted small">図の描画に失敗しました</span>';
+    el.innerHTML = `<span class="text-muted small">${I18N[window._lang || 'ja'].sankey_render_err}</span>`;
     return;
   }
 
@@ -2536,10 +2758,10 @@ function renderDetailSankey(wbId, edges, fields) {
     .data(graph.links)
     .join('path')
     .attr('d',              d3.sankeyLinkHorizontal())
-    .attr('stroke',         '#bbb')
+    .attr('stroke',         isDark ? '#3a5a80' : '#bbb')
     .attr('stroke-width',   d => Math.max(1, d.width))
     .attr('fill',           'none')
-    .attr('stroke-opacity', 0.4);
+    .attr('stroke-opacity', isDark ? 0.55 : 0.4);
 
   // ノード
   const node = svg.append('g').selectAll('g')
@@ -2561,7 +2783,7 @@ function renderDetailSankey(wbId, edges, fields) {
     .attr('dy',          '0.35em')
     .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
     .attr('font-size',   '9px')
-    .attr('fill',        '#333')
+    .attr('fill',        isDark ? '#dce8ff' : '#333')
     .text(d => d.name.length > 20 ? d.name.slice(0, 19) + '…' : d.name)
     .append('title').text(d => d.name);
 }
@@ -2577,20 +2799,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /** 「詳細分析タブで開く」ボタン押下 */
 function openFullAnalysis(wbId) {
-  // カードハイライトをリセット（可視タブに切り替えるため）
-  document.querySelectorAll('.stat-card[id^="scard-"]').forEach(c => c.classList.remove('active-section'));
-  // 計算フィールド分析タブに切り替え（直接クラス操作）
-  const ALL_PANES2 = ['wb', 'ds', 'views', 'users', 'flows', 'schedules', 'topviews', 'fields'];
-  ALL_PANES2.forEach(id => {
-    const pane = document.getElementById('tab-' + id);
-    if (!pane) return;
-    if (id === 'fields') { pane.classList.add('show', 'active'); }
-    else                 { pane.classList.remove('show', 'active'); }
-  });
-  // 可視タブのアクティブ状態を fields に同期
-  document.querySelectorAll('#mainTab .nav-link').forEach(l => l.classList.remove('active'));
-  const fieldsTabLink = document.querySelector('#mainTab [href="#tab-fields"]');
-  if (fieldsTabLink) fieldsTabLink.classList.add('active');
+  switchToSection('fields');
 
   // ドロップダウンでワークブックを選択
   const sel = document.getElementById('wb-select-fields');
