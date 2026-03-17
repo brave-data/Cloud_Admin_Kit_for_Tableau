@@ -393,10 +393,6 @@
     <button class="btn btn-sm btn-outline-light px-2" onclick="toggleDarkMode()" id="btn-dark" title="ダーク/ライトモード切替">
       <i class="bi bi-moon-fill" id="dark-icon" style="font-size:0.85rem"></i>
     </button>
-    <button class="btn btn-sm btn-outline-light px-2 position-relative" onclick="switchToSection('maintenance');renderMaintenancePage()" id="btn-maintenance" title="メンテナンス">
-      <i class="bi bi-tools" style="font-size:0.85rem"></i>
-      <span id="maintenance-nav-badge" style="display:none;position:absolute;top:2px;right:2px;width:8px;height:8px;background:#e67e22;border-radius:50%;border:1.5px solid #1a2a4a"></span>
-    </button>
     <button id="btn-refresh" class="btn btn-sm btn-outline-light" onclick="triggerRefresh()">
       <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="refresh">更新</span>
     </button>
@@ -824,55 +820,7 @@
             </div>
           </div>
 
-          <div class="accordion-item border mb-2 rounded">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#help-maintenance">
-                <i class="bi bi-tools me-2" style="color:#e67e22"></i><span data-i18n="help_maintenance_title">メンテナンス</span>
-              </button>
-            </h2>
-            <div id="help-maintenance" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
-              <div class="accordion-body small">
-                <div class="lang-ja">
-                  <p>隔週（毎月1日・15日 9:00）に自動実行されるシステム健全性チェックの結果を表示します。</p>
-                  <ul>
-                    <li>Tableau REST APIバージョンの互換性確認</li>
-                    <li>Pythonパッケージの更新確認（tableauserverclient・fastapi等）</li>
-                    <li>GitHubリポジトリとのズレ確認</li>
-                    <li>「今すぐチェック」ボタンで手動実行も可能です</li>
-                  </ul>
-                </div>
-                <div class="lang-en d-none">
-                  <p>Shows the result of automated system health checks, run biweekly (1st and 15th of each month at 9:00 AM).</p>
-                  <ul>
-                    <li>Tableau REST API version compatibility check</li>
-                    <li>Python package update check (tableauserverclient, fastapi, etc.)</li>
-                    <li>GitHub repository sync status</li>
-                    <li>Use the <strong>Check Now</strong> button to run manually at any time</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div><!-- accordion -->
-      </div>
-    </div>
-
-    <!-- ── メンテナンスタブ ─────────────────────────── -->
-    <div class="tab-pane fade" id="tab-maintenance">
-      <div class="card border-0 shadow-sm p-4">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-          <h5 class="fw-bold mb-0"><i class="bi bi-tools me-2" style="color:#e67e22"></i><span data-i18n="nav_maintenance">メンテナンス</span></h5>
-          <button class="btn btn-sm btn-outline-secondary" onclick="renderMaintenancePage(true)">
-            <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="maintenance_refresh">今すぐチェック</span>
-          </button>
-        </div>
-        <div id="maintenance-content">
-          <div class="text-center text-muted py-5">
-            <i class="bi bi-tools fs-1 d-block mb-3 opacity-25"></i>
-            <div data-i18n="maintenance_no_report">レポートがまだありません。スケジュールタスクが隔週で自動実行されます。</div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -943,14 +891,6 @@ const I18N = {
     th_frequency: '頻度', th_next_run: '次回実行',
     nav_diff: '差分比較',
     nav_help: '使い方',
-    nav_maintenance: 'メンテナンス',
-    maintenance_refresh: '今すぐチェック',
-    maintenance_no_report: 'レポートがまだありません。スケジュールタスクが隔週で自動実行されます。',
-    maintenance_generated: '生成日時',
-    maintenance_api: 'REST APIバージョン',
-    maintenance_packages: 'パッケージ更新',
-    maintenance_git: 'Gitステータス',
-    maintenance_recommendations: '推奨アクション',
     diff_no_snapshot_hint: '更新ボタンを押すと、次回以降に差分を確認できます。',
     diff_new_section: '🟢 新規追加', diff_changed_section: '🟡 更新', diff_deleted_section: '🔴 削除',
     diff_cat_wb: 'ワークブック', diff_cat_wb_content: 'ワークブック（シート変更）',
@@ -978,22 +918,8 @@ const I18N = {
     help_schedules_title: 'スケジュール管理',
     help_fields_title: '計算フィールド分析',
     help_diff_title: '差分比較',
-    help_maintenance_title: 'メンテナンス',
     diff_compared_yesterday: '前日比較:',
     diff_compared_recent: '直近履歴比較:',
-    // maintenance
-    maintenance_checking: 'チェック中...',
-    maintenance_current: '現在',
-    maintenance_latest_known: '最新',
-    maintenance_unknown: '不明',
-    maintenance_up_to_date: '最新',
-    maintenance_needs_update: 'アップデート推奨',
-    maintenance_all_latest: 'すべて最新',
-    maintenance_git_branch: 'ブランチ',
-    maintenance_git_commit: '最新コミット',
-    maintenance_git_synced: '同期済み',
-    maintenance_git_behind: '件リモートが先行',
-    maintenance_no_issues: '問題は見つかりませんでした。',
     // refresh type badges
     badge_full_refresh: '完全更新',
     badge_incremental: '差分更新',
@@ -1043,14 +969,6 @@ const I18N = {
     th_frequency: 'Frequency', th_next_run: 'Next Run',
     nav_diff: 'Changes',
     nav_help: 'Help',
-    nav_maintenance: 'Maintenance',
-    maintenance_refresh: 'Check Now',
-    maintenance_no_report: 'No report yet. A scheduled task runs automatically every two weeks.',
-    maintenance_generated: 'Generated',
-    maintenance_api: 'REST API Version',
-    maintenance_packages: 'Package Updates',
-    maintenance_git: 'Git Status',
-    maintenance_recommendations: 'Recommendations',
     diff_no_snapshot_hint: 'Click Refresh to start tracking changes.',
     diff_new_section: '🟢 New', diff_changed_section: '🟡 Updated', diff_deleted_section: '🔴 Deleted',
     diff_cat_wb: 'Workbooks', diff_cat_wb_content: 'Workbooks (Sheet Changes)',
@@ -1078,22 +996,8 @@ const I18N = {
     help_schedules_title: 'Schedules',
     help_fields_title: 'Calculated Fields',
     help_diff_title: 'Changes',
-    help_maintenance_title: 'Maintenance',
     diff_compared_yesterday: 'Yesterday:',
     diff_compared_recent: 'Recent snapshot:',
-    // maintenance
-    maintenance_checking: 'Checking...',
-    maintenance_current: 'Current',
-    maintenance_latest_known: 'Latest',
-    maintenance_unknown: 'Unknown',
-    maintenance_up_to_date: 'Up to date',
-    maintenance_needs_update: 'Update recommended',
-    maintenance_all_latest: 'All up to date',
-    maintenance_git_branch: 'Branch',
-    maintenance_git_commit: 'Latest commit',
-    maintenance_git_synced: 'In sync',
-    maintenance_git_behind: 'commits behind',
-    maintenance_no_issues: 'No issues found.',
     // refresh type badges
     badge_full_refresh: 'Full Refresh',
     badge_incremental: 'Incremental',
@@ -1614,75 +1518,6 @@ function renderDiffTab(snap) {
     ${buildSection('changed-section', t.diff_changed_section, totalChanged, changedCats)}
     ${buildSection('deleted-section', t.diff_deleted_section, totalDeleted, deletedCats)}
   `;
-}
-
-// ============================================================
-// メンテナンスページ
-// ============================================================
-async function renderMaintenancePage(forceRefresh = false) {
-  const el = document.getElementById('maintenance-content');
-  const t  = I18N[window._lang || 'ja'];
-  el.innerHTML = `<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>${t.maintenance_checking}</div>`;
-  try {
-    const report = await fetchJSON('/api/maintenance-report');
-    if (report.error) {
-      el.innerHTML = `<div class="alert alert-secondary">${esc(report.error)}</div>`;
-      return;
-    }
-    const apiOk  = !report.api_version?.needs_update;
-    const pkgCnt = (report.outdated_packages || []).length;
-    const gitBehind = report.git_status?.behind || 0;
-    const badge = document.getElementById('maintenance-nav-badge');
-    const warn  = !apiOk || pkgCnt > 0 || gitBehind > 0;
-    if (badge) { badge.textContent = warn ? '!' : ''; badge.style.display = warn ? '' : 'none'; }
-
-    el.innerHTML = `
-      <div class="text-muted small mb-3"><i class="bi bi-clock me-1"></i>${t.maintenance_generated}: <strong>${report.generated_at || '—'}</strong></div>
-
-      <div class="row g-3 mb-3">
-        <div class="col-md-4">
-          <div class="card border-0 bg-light p-3 h-100">
-            <div class="fw-semibold mb-2"><i class="bi bi-cloud-check me-1"></i>${t.maintenance_api}</div>
-            <div class="small">
-              <div>${t.maintenance_current}: <code>${report.api_version?.current || '—'}</code></div>
-              <div>${t.maintenance_latest_known}: <code>${report.api_version?.latest_known || t.maintenance_unknown}</code></div>
-              <div class="mt-1">${apiOk
-                ? `<span class="badge bg-success">${t.maintenance_up_to_date}</span>`
-                : `<span class="badge bg-warning text-dark">${t.maintenance_needs_update}</span>`}</div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card border-0 bg-light p-3 h-100">
-            <div class="fw-semibold mb-2"><i class="bi bi-box-seam me-1"></i>${t.maintenance_packages}</div>
-            ${pkgCnt === 0
-              ? `<div class="small text-success"><i class="bi bi-check-circle me-1"></i>${t.maintenance_all_latest}</div>`
-              : `<ul class="small mb-0 ps-3">${(report.outdated_packages || []).map(p =>
-                  `<li><code>${esc(p.name)}</code> ${esc(p.current)} → <strong>${esc(p.latest)}</strong></li>`).join('')}</ul>`}
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card border-0 bg-light p-3 h-100">
-            <div class="fw-semibold mb-2"><i class="bi bi-github me-1"></i>${t.maintenance_git}</div>
-            <div class="small">
-              <div>${t.maintenance_git_branch}: <code>${report.git_status?.branch || 'main'}</code></div>
-              <div>${t.maintenance_git_commit}: <code>${esc(report.git_status?.last_commit || '—')}</code></div>
-              ${gitBehind > 0 ? `<div class="text-warning mt-1"><i class="bi bi-exclamation-triangle me-1"></i>${gitBehind} ${t.maintenance_git_behind}</div>` : `<div class="text-success mt-1"><i class="bi bi-check-circle me-1"></i>${t.maintenance_git_synced}</div>`}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      ${(report.recommendations || []).length
-        ? `<div class="card border-warning border-opacity-50 p-3">
-            <div class="fw-semibold mb-2 text-warning"><i class="bi bi-lightbulb me-1"></i>${t.maintenance_recommendations}</div>
-            <ul class="small mb-0 ps-3">${report.recommendations.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
-           </div>`
-        : `<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle-fill me-1"></i>${t.maintenance_no_issues}</div>`}
-    `;
-  } catch(e) {
-    el.innerHTML = `<div class="alert alert-secondary">${t.maintenance_no_report}</div>`;
-  }
 }
 
 function fmtDate(iso) {
@@ -2297,19 +2132,6 @@ _pollTimer = setInterval(pollStatus, 2000);
 pollStatus();
 
 // 起動時にメンテナンスバッジだけサイレントチェック
-(async () => {
-  try {
-    const report = await fetchJSON('/api/maintenance-report');
-    if (!report.error) {
-      const warn = report.api_version?.needs_update ||
-                   (report.outdated_packages || []).length > 0 ||
-                   (report.git_status?.behind || 0) > 0;
-      const badge = document.getElementById('maintenance-nav-badge');
-      if (badge) badge.style.display = warn ? '' : 'none';
-    }
-  } catch(_) {}
-})();
-
 // ============================================================
 // 計算フィールド分析
 // ============================================================

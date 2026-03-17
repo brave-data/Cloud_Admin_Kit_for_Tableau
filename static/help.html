@@ -61,7 +61,6 @@
             <li><a href="#fields">🧮 計算フィールドタブ</a></li>
             <li><a href="#diff">🔍 差分比較タブ</a></li>
             <li><a href="#ktw">🏷️ KTW監視タグ</a></li>
-            <li><a href="#maintenance">🛠️ メンテナンス</a></li>
           </ul>
         </div>
       </div>
@@ -328,27 +327,6 @@
         <div>
           <div class="feature-title">自動スキャンのタイミング</div>
           <div class="feature-desc">Refresh ボタンを押すたびに、バックグラウンドで KTWタグWBをダウンロードして計算フィールドを比較します。差分は差分比較タブに反映されます。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- メンテナンス -->
-  <div class="card section-card" id="maintenance">
-    <div class="card-header"><i class="bi bi-tools me-2 text-secondary"></i>定期メンテナンス</div>
-    <div class="card-body p-0">
-      <div class="feature-row">
-        <div class="feature-icon text-secondary"><i class="bi bi-file-earmark-text"></i></div>
-        <div>
-          <div class="feature-title">content_audit.py の実行</div>
-          <div class="feature-desc">
-            Tableau Cloud上のコンテンツを手動で監査するスクリプトです（UIのメンテナンスタブとは独立）。
-            <ul class="step-list">
-              <li>実行: <code>python content_audit.py</code></li>
-              <li>出力: <code>reports/content_audit_YYYY-MM-DD.md</code></li>
-              <li>確認内容: 180日未更新WB / 90日未ログインUser / KTW監視WBリスト / 未認定DS</li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>

@@ -203,19 +203,6 @@ async def get_ktw_fields():
     return list(results)
 
 
-@app.get("/api/maintenance-report")
-async def get_maintenance_report():
-    """maintenance_report.json を返す（スケジュールタスクが生成）"""
-    import json
-    report_path = Path(__file__).parent / "maintenance_report.json"
-    if not report_path.exists():
-        return {"error": "レポートがまだ生成されていません。隔週スケジュールタスクが自動実行します。"}
-    try:
-        return json.loads(report_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.get("/api/workbooks/{workbook_id}/fields")
 async def get_workbook_fields(workbook_id: str):
     """ワークブックをダウンロードして計算フィールドの依存関係を返す（結果はキャッシュ）"""
