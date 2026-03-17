@@ -1,3 +1,6 @@
+# 動作確認済みバージョン (2026-03): fastapi==0.115, uvicorn==0.34, tableauserverclient==0.35, defusedxml==0.7.1
+# バージョンを固定したい場合は pip-tools や uv でロックファイルを生成してください。
+# tableauserverclient は Python 3.10+ が必要です（型注釈に union syntax を使用）。
 fastapi>=0.111.0
 uvicorn[standard]>=0.30.0
 tableauserverclient>=0.30.0
