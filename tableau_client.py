@@ -65,7 +65,13 @@ def fetch_all() -> dict[str, Any]:
     with server.auth.sign_in(auth):
 
         # ── ユーザー ────────────────────────────────────────
-        users_raw = list(TSC.Pager(server.users))
+        # 権限不足（Site Administrator 未満）の場合に取得失敗することがある。
+        # 失敗時は空リストで続行し、以降のオーナー表示が "Unknown" になる。
+        try:
+            users_raw = list(TSC.Pager(server.users))
+        except Exception as exc:
+            logger.warning("ユーザー一覧の取得に失敗しました（権限不足の可能性）: %s", exc)
+            users_raw = []
         user_map  = {u.id: (u.fullname or u.name) for u in users_raw}
 
         users = []
@@ -80,7 +86,11 @@ def fetch_all() -> dict[str, Any]:
             })
 
         # ── プロジェクト ─────────────────────────────────────
-        projects_raw = list(TSC.Pager(server.projects))
+        try:
+            projects_raw = list(TSC.Pager(server.projects))
+        except Exception as exc:
+            logger.warning("プロジェクト一覧の取得に失敗しました: %s", exc)
+            projects_raw = []
         project_map  = {p.id: p.name for p in projects_raw}
 
         projects = []
@@ -94,7 +104,11 @@ def fetch_all() -> dict[str, Any]:
             })
 
         # ── ワークブック ─────────────────────────────────────
-        workbooks_raw = list(TSC.Pager(server.workbooks))
+        try:
+            workbooks_raw = list(TSC.Pager(server.workbooks))
+        except Exception as exc:
+            logger.warning("ワークブック一覧の取得に失敗しました: %s", exc)
+            workbooks_raw = []
         workbooks = []
         for wb in workbooks_raw:
             size_mb = round((wb.size or 0) / 1024 / 1024, 2)
@@ -113,7 +127,11 @@ def fetch_all() -> dict[str, Any]:
             })
 
         # ── データソース ─────────────────────────────────────
-        datasources_raw = list(TSC.Pager(server.datasources))
+        try:
+            datasources_raw = list(TSC.Pager(server.datasources))
+        except Exception as exc:
+            logger.warning("データソース一覧の取得に失敗しました: %s", exc)
+            datasources_raw = []
         datasources = []
         for ds in datasources_raw:
             datasources.append({
@@ -133,13 +151,16 @@ def fetch_all() -> dict[str, Any]:
         # ── ビュー (使用状況付き) ───────────────────────────
         # TSC 0.30+ では usage=True を views.get() に直接渡す必要がある
         views_raw = []
-        req = TSC.RequestOptions(pagesize=100)
-        while True:
-            page, pagination = server.views.get(req_options=req, usage=True)
-            views_raw.extend(page)
-            if len(views_raw) >= pagination.total_available:
-                break
-            req.pagenumber += 1
+        try:
+            req = TSC.RequestOptions(pagesize=100)
+            while True:
+                page, pagination = server.views.get(req_options=req, usage=True)
+                views_raw.extend(page)
+                if len(views_raw) >= pagination.total_available:
+                    break
+                req.pagenumber += 1
+        except Exception as exc:
+            logger.warning("ビュー一覧の取得に失敗しました: %s", exc)
         views = []
         for v in views_raw:
             # TSC は last_viewed_at を直接公開しないため、利用可能な属性を試みる
@@ -371,6 +392,9 @@ def fetch_flow_connections(flow_id: str) -> dict[str, Any]:
             logger.warning("フロー接続情報の取得に失敗しました: %s", exc)
 
         # TSC の FlowConnectionItem が全空の場合、直接 REST API XML を解析してフォールバック
+        # NOTE: server._site_id / server._session は TSC の内部（private）属性。
+        # TSC のバージョンアップで突然壊れる可能性がある。
+        # 公開 API でフロー接続を取得する手段が TSC に追加された場合はそちらに移行すること。
         if connections and all(not c["datasource_name"] and not c["connection_type"] for c in connections):
             try:
                 import defusedxml.ElementTree as DET

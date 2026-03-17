@@ -258,11 +258,17 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.getenv("PORT", 8000))
+    # デフォルトは 127.0.0.1（ローカルのみ）。
+    # LAN 公開が必要な場合のみ HOST=0.0.0.0 を .env に設定してください。
+    # ※ 認証なしのため、0.0.0.0 での公開は同一ネットワーク全体に管理情報が見えます。
+    host = os.getenv("HOST", "127.0.0.1")
     print(f"\n{'='*55}")
     print("  Tableau Cloud Manager")
     print(f"{'='*55}")
     print(f"  ブラウザで開く → http://localhost:{port}")
     print(f"  API ドキュメント → http://localhost:{port}/docs")
+    if host != "127.0.0.1":
+        print(f"  ⚠️  HOST={host} — LAN公開中。認証なしでアクセス可能です。")
     print(f"  停止: Ctrl+C")
     print(f"{'='*55}\n")
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run("main:app", host=host, port=port, reload=False)
