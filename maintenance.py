@@ -12,12 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tableau_client import (
-    fetch_workbooks,
-    fetch_datasources,
-    fetch_users,
-    fetch_flows,
-)
+from tableau_client import fetch_all
 
 
 # ── ヘルパー ──────────────────────────────────────────────────────────────────
@@ -45,10 +40,11 @@ def _date(iso: str | None) -> str:
 def run_maintenance() -> str:
     print("📋 Tableau Cloud メンテナンスチェック開始...")
 
-    wbs   = fetch_workbooks()
-    dss   = fetch_datasources()
-    users = fetch_users()
-    flows = fetch_flows()
+    data  = fetch_all()
+    wbs   = data["workbooks"]
+    dss   = data["datasources"]
+    users = data["users"]
+    flows = data["flows"]
 
     now   = datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
