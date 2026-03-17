@@ -98,56 +98,20 @@ Tableau Cloud の管理画面は機能ごとに分散しており、「どのデ
 
 ---
 
-## セットアップ
-
-### 1. リポジトリをクローン
+## クイックスタート
 
 ```bash
 git clone https://github.com/brave-data/Tableau_Cloud_Manager.git
 cd Tableau_Cloud_Manager
-```
-
-### 2. 仮想環境を作成・有効化（Python 3.10以上が必要）
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate   # Windowsは .venv\Scripts\activate
-```
-
-### 3. 依存パッケージをインストール
-
-```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 4. 環境変数を設定
-
-```bash
-cp .env.example .env
-```
-
-`.env` を開いて Tableau Cloud の認証情報を入力します：
-
-```ini
-TABLEAU_SERVER_URL=https://10ay.online.tableau.com   # Tableau CloudのURL
-TABLEAU_SITE_NAME=mycompany                          # サイト名（デフォルトサイトは空欄）
-TABLEAU_TOKEN_NAME=my-pat-name                       # PATの名前
-TABLEAU_TOKEN_SECRET=xxxxxxxxxxxxxxxxxxxx            # PATのシークレット
-```
-
-**Personal Access Token の作成：**
-1. Tableau Cloud にログイン
-2. 右上のアカウントメニュー → **アカウント設定**
-3. **個人用アクセストークン** → **トークンを作成**
-4. 名前を入力してシークレットをコピー（表示は1回のみ）
-
-### 5. 起動
-
-```bash
+cp .env.example .env   # Tableau Cloudの認証情報を入力
 python main.py
 ```
 
-ブラウザで **http://localhost:8000** を開き、右上の **「↻ 更新」ボタン** を押すとデータ取得が始まります。
+ブラウザで **http://localhost:8000** を開き、**「↻ 更新」ボタン** を押すとデータ取得が始まります。
+
+**→ 詳細なセットアップ手順・PATの作成方法・トラブルシューティング: [SETUP_ja.md](SETUP_ja.md)**
 
 ---
 
@@ -205,21 +169,12 @@ Tableau_Cloud_Manager/
 ├── maintenance_report.json  # 隔週メンテナンスタスクが自動生成
 ├── README.md                # 英語版README
 ├── README_ja.md             # このファイル（日本語版）
+├── SETUP.md                 # 詳細セットアップガイド（英語）
+├── SETUP_ja.md              # 詳細セットアップガイド（日本語）
+├── docs/screenshots/        # README用UIスクリーンショット
 └── static/
     └── index.html           # シングルページUI（Bootstrap 5 + DataTables）
 ```
-
----
-
-## トラブルシューティング
-
-| 症状 | 対処法 |
-|------|--------|
-| 「接続に失敗しました」エラー | `.env` のURL・トークン名・シークレットを確認 |
-| タブのデータが0件 | そのタイプのコンテンツがサイトに存在しない場合は正常 |
-| ポート8000が使用中 | `.env` に `PORT=8080` を追加して再起動 |
-| ずっとローディング中 | 右上の「↻ 更新」ボタンを押してデータを取得してください |
-| SSL エラー（社内プロキシ環境） | `tableau_client.py` で `verify=False` を設定（本番環境では非推奨） |
 
 ---
 
