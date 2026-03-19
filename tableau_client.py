@@ -111,7 +111,7 @@ def fetch_all() -> dict[str, Any]:
             workbooks_raw = []
         workbooks = []
         for wb in workbooks_raw:
-            size_mb = round((wb.size or 0) / 1024 / 1024, 2)
+            size_mb = round((getattr(wb, "size", None) or 0) / 1024 / 1024, 2)
             workbooks.append({
                 "id":           wb.id,
                 "name":         wb.name,
@@ -274,10 +274,10 @@ def fetch_all() -> dict[str, Any]:
         flow_run_map: dict[str, object] = {}
         try:
             run_req = TSC.RequestOptions(pagesize=100)
-            recent_runs = server.flow_runs.get(run_req)
+            recent_runs, _ = server.flow_runs.get(run_req)
             for run in recent_runs:
                 fid = getattr(run, "flow_id", None)
-                completed = getattr(run, "completed_at", None)
+                completed = getattr(run, "completed_at", getattr(run, "ended_at", None))
                 if fid and completed is not None:
                     existing = flow_run_map.get(fid)
                     if existing is None or _ensure_utc(completed) > _ensure_utc(existing):
