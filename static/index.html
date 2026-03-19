@@ -2160,11 +2160,24 @@ const DS_PALETTE = [
 // ワークブック検索コンボボックス
 let _wbList = []; // { id, label }
 
+/**
+ * 日本語検索の正規化:
+ *   1. NFKC 正規化で半角カタカナ → 全角カタカナ に統一
+ *   2. カタカナ → ひらがな に変換（ひらがなで検索してカタカナ名にヒットさせる）
+ *   3. toLowerCase で英字の大小を統一
+ */
+function _normalizeForSearch(s) {
+  return (s || '')
+    .normalize('NFKC')
+    .replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    .toLowerCase();
+}
+
 function _renderWbDropItems(query) {
   const ul = document.getElementById('wb-dropdown-list');
   if (!ul) return;
-  const q = (query || '').trim().toLowerCase();
-  const filtered = q ? _wbList.filter(w => w.label.toLowerCase().includes(q)) : _wbList;
+  const q = _normalizeForSearch(query).trim();
+  const filtered = q ? _wbList.filter(w => _normalizeForSearch(w.label).includes(q)) : _wbList;
   const t = I18N[window._lang || 'ja'];
   if (filtered.length === 0) {
     ul.innerHTML = `<li class="px-3 py-2 text-muted small">${t.wb_search_no_result || '該当なし'}</li>`;
