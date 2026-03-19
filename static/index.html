@@ -1616,13 +1616,13 @@ function switchToSection(section) {
 // データ描画
 // ============================================================
 function renderSummary(s) {
-  document.getElementById('s-wb').textContent      = s.total_workbooks;
-  document.getElementById('s-ds').textContent      = s.total_datasources;
-  document.getElementById('s-views').textContent   = s.total_views;
-  document.getElementById('s-users').textContent   = s.total_users;
-  document.getElementById('s-stale').textContent   = s.stale_workbooks + s.stale_datasources;
-  document.getElementById('s-inactive').textContent = s.inactive_users_90d;
-  document.getElementById('s-flows').textContent   = s.total_flows || 0;
+  document.getElementById('s-wb').textContent      = s.total_workbooks      ?? 0;
+  document.getElementById('s-ds').textContent      = s.total_datasources    ?? 0;
+  document.getElementById('s-views').textContent   = s.total_views          ?? 0;
+  document.getElementById('s-users').textContent   = s.total_users          ?? 0;
+  document.getElementById('s-stale').textContent   = (s.stale_workbooks ?? 0) + (s.stale_datasources ?? 0);
+  document.getElementById('s-inactive').textContent = s.inactive_users_90d  ?? 0;
+  document.getElementById('s-flows').textContent   = s.total_flows          ?? 0;
 }
 
 function renderWorkbooks(rows) {

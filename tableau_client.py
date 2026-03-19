@@ -140,7 +140,7 @@ def fetch_all() -> dict[str, Any]:
                 "project":      ds.project_name or "",
                 "owner":        user_map.get(ds.owner_id, "Unknown"),
                 "type":         ds.datasource_type or "",
-                "certified":    bool(ds.certified),
+                "certified":    bool(getattr(ds, "certified", False)),
                 "cert_note":    ds.certification_note or "",
                 "created_at":   _fmt(ds.created_at),
                 "updated_at":   _fmt(ds.updated_at),
