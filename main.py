@@ -24,6 +24,37 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 # ---------------------------------------------------------------------------
+# 起動時の必須環境変数チェック
+# ---------------------------------------------------------------------------
+_REQUIRED_ENV = {
+    "TABLEAU_SERVER_URL":  "Tableau Cloud のURL (例: https://10ay.online.tableau.com)",
+    "TABLEAU_TOKEN_NAME":  "Personal Access Token の名前",
+    "TABLEAU_TOKEN_SECRET":"Personal Access Token のシークレット",
+}
+
+def _check_env() -> None:
+    """必須変数が未設定の場合、分かりやすいエラーメッセージを表示して終了する。"""
+    missing = [
+        (key, desc)
+        for key, desc in _REQUIRED_ENV.items()
+        if not os.getenv(key)
+    ]
+    if missing:
+        print("\n" + "=" * 55)
+        print("  ❌  .env の設定が不足しています")
+        print("=" * 55)
+        for key, desc in missing:
+            print(f"  未設定: {key}")
+            print(f"         ({desc})")
+        print("\n  .env.example をコピーして .env を作成してください:")
+        print("    cp .env.example .env")
+        print("  詳細: SETUP.md / SETUP_ja.md")
+        print("=" * 55 + "\n")
+        raise SystemExit(1)
+
+_check_env()
+
+# ---------------------------------------------------------------------------
 # インメモリキャッシュ
 # ---------------------------------------------------------------------------
 _cache: dict[str, Any] = {
