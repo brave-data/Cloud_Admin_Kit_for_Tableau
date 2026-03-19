@@ -111,7 +111,7 @@ def fetch_all() -> dict[str, Any]:
             workbooks_raw = []
         workbooks = []
         for wb in workbooks_raw:
-            size_mb = round((wb.size or 0) / 1024 / 1024, 2)
+            size_mb = round((getattr(wb, "size", None) or 0) / 1024 / 1024, 2)
             workbooks.append({
                 "id":           wb.id,
                 "name":         wb.name,
@@ -140,7 +140,7 @@ def fetch_all() -> dict[str, Any]:
                 "project":      ds.project_name or "",
                 "owner":        user_map.get(ds.owner_id, "Unknown"),
                 "type":         ds.datasource_type or "",
-                "certified":    bool(ds.certified),
+                "certified":    bool(getattr(ds, "certified", False)),
                 "cert_note":    ds.certification_note or "",
                 "created_at":   _fmt(ds.created_at),
                 "updated_at":   _fmt(ds.updated_at),
@@ -198,14 +198,13 @@ def fetch_all() -> dict[str, Any]:
         jobs = []
         for j in jobs_raw:
             jobs.append({
-                "id":           j.id,
-                "type":         j.type or "",
-                "status":       j.status or "",
-                "created_at":   _fmt(j.created_at),
-                "started_at":   _fmt(j.started_at),
-                "completed_at": _fmt(j.completed_at),
-                "finish_code":  j.finish_code,
-                "notes":        (j.notes or "")[:300],
+                "id":           getattr(j, "id",           getattr(j, "_id",           None)),
+                "type":         getattr(j, "type",         getattr(j, "_type",         "")) or "",
+                "status":       getattr(j, "status",       getattr(j, "_status",       "")) or "",
+                "created_at":   _fmt(getattr(j, "created_at",   getattr(j, "_created_at",   None))),
+                "started_at":   _fmt(getattr(j, "started_at",   getattr(j, "_started_at",   None))),
+                "completed_at": _fmt(getattr(j, "ended_at",     getattr(j, "_ended_at",     None))),
+                "notes":        (getattr(j, "notes", "") or "")[:300],
             })
 
         # ── 抽出スケジュール ──────────────────────────────────
@@ -275,10 +274,10 @@ def fetch_all() -> dict[str, Any]:
         flow_run_map: dict[str, object] = {}
         try:
             run_req = TSC.RequestOptions(pagesize=100)
-            recent_runs = server.flow_runs.get(run_req)
+            recent_runs, _ = server.flow_runs.get(run_req)
             for run in recent_runs:
                 fid = getattr(run, "flow_id", None)
-                completed = getattr(run, "completed_at", None)
+                completed = getattr(run, "completed_at", getattr(run, "ended_at", None))
                 if fid and completed is not None:
                     existing = flow_run_map.get(fid)
                     if existing is None or _ensure_utc(completed) > _ensure_utc(existing):
@@ -319,7 +318,7 @@ def fetch_all() -> dict[str, Any]:
                           if u["days_since_login"] is not None
                           and u["days_since_login"] > 90]
 
-        failed_jobs = [j for j in jobs if j["finish_code"] == 1]
+        failed_jobs = [j for j in jobs if j["status"] == "Failed"]
 
         summary = {
             "total_users":        len(users),
