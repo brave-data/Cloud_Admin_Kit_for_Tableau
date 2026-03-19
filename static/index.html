@@ -598,17 +598,9 @@
         <!-- コントロール行 -->
         <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
           <label class="fw-bold mb-0" data-i18n="lbl_workbook_select">ワークブック:</label>
-          <div class="position-relative" id="wb-search-wrapper" style="min-width:260px;max-width:500px;flex:1 1 260px">
-            <input type="text" id="wb-search-fields" class="form-control form-control-sm"
-                   autocomplete="off" spellcheck="false"
-                   placeholder="-- ワークブックを検索・選択 --">
-            <input type="hidden" id="wb-select-fields" value="">
-            <ul id="wb-dropdown-list" class="list-unstyled position-absolute w-100 mb-0 py-1"
-                style="z-index:1055;max-height:280px;overflow-y:auto;display:none;top:100%;left:0;
-                       background:var(--bg-card);border:1px solid var(--border-subtle);
-                       border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.18)">
-            </ul>
-          </div>
+          <select id="wb-select-fields" class="form-select form-select-sm w-auto">
+            <option value="">-- 選択してください --</option>
+          </select>
           <button id="btn-analyze" class="btn btn-sm btn-primary" onclick="analyzeWorkbook()">
             <i class="bi bi-search me-1"></i><span data-i18n="btn_analyze">計算フィールドを分析</span>
           </button>
@@ -945,9 +937,8 @@ const I18N = {
     loading_msg: 'Tableau Cloud からデータを取得中...',
     err_load_failed: 'データの読み込みに失敗しました: ',
     err_analyze_failed: 'ワークブック分析に失敗しました: ',
-    wb_select_placeholder: '-- ワークブックを検索・選択 --',
+    wb_select_placeholder: '-- 選択してください --',
     wb_select_alert: 'ワークブックを選択してください',
-    wb_search_no_result: '該当なし',
     sankey_no_deps: '依存関係なし',
     sankey_render_err: '図の描画に失敗しました',
   },
@@ -1024,9 +1015,8 @@ const I18N = {
     loading_msg: 'Fetching data from Tableau Cloud...',
     err_load_failed: 'Failed to load data: ',
     err_analyze_failed: 'Workbook analysis failed: ',
-    wb_select_placeholder: '-- Search or select a workbook --',
+    wb_select_placeholder: '-- Select a workbook --',
     wb_select_alert: 'Please select a workbook',
-    wb_search_no_result: 'No results found',
     sankey_no_deps: 'No dependencies',
     sankey_render_err: 'Failed to render diagram',
   },
@@ -1046,10 +1036,6 @@ function applyLang(lang) {
   // ヘルプページの言語ブロック切り替え
   document.querySelectorAll('.lang-ja').forEach(el => el.classList.toggle('d-none', lang !== 'ja'));
   document.querySelectorAll('.lang-en').forEach(el => el.classList.toggle('d-none', lang !== 'en'));
-
-  // 検索コンボボックスの placeholder を言語に合わせて更新
-  const wbSearchInp = document.getElementById('wb-search-fields');
-  if (wbSearchInp && !wbSearchInp.value) wbSearchInp.placeholder = t.wb_select_placeholder || '';
 
   // DataTables が初期化済みであれば再レンダリングして言語を反映
   if (window._allData) {
@@ -2157,76 +2143,16 @@ const DS_PALETTE = [
   '#00b050', '#ff0000',
 ];
 
-// ワークブック検索コンボボックス
-let _wbList = []; // { id, label }
-
-function _renderWbDropItems(query) {
-  const ul = document.getElementById('wb-dropdown-list');
-  if (!ul) return;
-  const q = (query || '').trim().toLowerCase();
-  const filtered = q ? _wbList.filter(w => w.label.toLowerCase().includes(q)) : _wbList;
-  const t = I18N[window._lang || 'ja'];
-  if (filtered.length === 0) {
-    ul.innerHTML = `<li class="px-3 py-2 text-muted small">${t.wb_search_no_result || '該当なし'}</li>`;
-  } else {
-    ul.innerHTML = filtered.map(w => {
-      const escaped = w.label.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-      return `<li class="wb-drop-item px-3 py-1" data-id="${w.id}" data-label="${escaped}"
-                  style="cursor:pointer;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
-                  onmouseover="this.style.background='var(--bg-detail)'"
-                  onmouseout="this.style.background=''">${escaped}</li>`;
-    }).join('');
-  }
-}
-
-function _selectWbItem(id, label) {
-  const inp = document.getElementById('wb-search-fields');
-  const hid = document.getElementById('wb-select-fields');
-  const ul  = document.getElementById('wb-dropdown-list');
-  if (inp) inp.value = label;
-  if (hid) hid.value = id;
-  if (ul)  ul.style.display = 'none';
-}
-
-(function _initWbSearch() {
-  // DOMContentLoaded 後に一度だけセットアップ
-  document.addEventListener('DOMContentLoaded', () => {
-    const inp     = document.getElementById('wb-search-fields');
-    const hidVal  = document.getElementById('wb-select-fields');
-    const ul      = document.getElementById('wb-dropdown-list');
-    const wrapper = document.getElementById('wb-search-wrapper');
-    if (!inp || !ul || !wrapper) return;
-
-    inp.addEventListener('focus', () => {
-      _renderWbDropItems(inp.value);
-      ul.style.display = 'block';
-    });
-    inp.addEventListener('input', () => {
-      if (hidVal) hidVal.value = ''; // 入力中は選択状態をクリア
-      _renderWbDropItems(inp.value);
-      ul.style.display = 'block';
-    });
-    ul.addEventListener('mousedown', e => {
-      const item = e.target.closest('.wb-drop-item');
-      if (item) _selectWbItem(item.dataset.id, item.dataset.label);
-    });
-    document.addEventListener('click', e => {
-      if (!wrapper.contains(e.target)) ul.style.display = 'none';
-    });
-  });
-})();
-
-/** ワークブック一覧からコンボボックスを構築 */
+/** ワークブック一覧からドロップダウンを構築 */
 function populateWbDropdown(workbooks) {
-  _wbList = workbooks.map(wb => ({
-    id:    wb.id,
-    label: `${wb.name}（${wb.project}）`,
-  }));
-  // 現在の選択をクリア
-  const inp = document.getElementById('wb-search-fields');
-  const hid = document.getElementById('wb-select-fields');
-  if (inp) inp.value = '';
-  if (hid) hid.value = '';
+  const sel = document.getElementById('wb-select-fields');
+  sel.innerHTML = `<option value="">${I18N[window._lang || 'ja'].wb_select_placeholder}</option>`;
+  workbooks.forEach(wb => {
+    const opt = document.createElement('option');
+    opt.value = wb.id;
+    opt.textContent = `${wb.name}（${wb.project}）`;
+    sel.appendChild(opt);
+  });
 }
 
 /** 分析ボタン押下 */
@@ -2697,10 +2623,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function openFullAnalysis(wbId) {
   switchToSection('fields');
 
-  // コンボボックスでワークブックを選択
-  const wb = _wbList.find(w => w.id === wbId);
-  if (wb) _selectWbItem(wb.id, wb.label);
-  else document.getElementById('wb-select-fields').value = wbId;
+  // ドロップダウンでワークブックを選択
+  const sel = document.getElementById('wb-select-fields');
+  if (sel) sel.value = wbId;
 
   // キャッシュがあれば即レンダリング、なければ API 呼び出し
   if (_wbExpandCache[wbId]) {
