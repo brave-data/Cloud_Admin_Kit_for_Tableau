@@ -1,5 +1,8 @@
 # Tableau Cloud Manager
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+
 > **日本語版 README**: [README_ja.md](README_ja.md)
 
 A local web app for **centralized management, change tracking, and maintenance efficiency** of your Tableau Cloud site — built with Python + FastAPI, running entirely on your machine.

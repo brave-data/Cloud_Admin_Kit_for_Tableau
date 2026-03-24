@@ -1,5 +1,8 @@
 # Tableau Cloud Manager
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+
 > **English README**: [README.md](README.md)
 
 Tableau Cloudサイトの**一元管理・変更追跡・メンテナンス効率化**を実現するローカルWebアプリです。
