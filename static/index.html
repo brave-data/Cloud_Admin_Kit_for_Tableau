@@ -2407,22 +2407,24 @@ function renderFieldTable(fields) {
 
 function copyFormula(btn) {
   const formula = btn.dataset.formula;
-  navigator.clipboard.writeText(formula).then(() => {
+  function onCopied() {
     btn.classList.add('copied');
-    btn.innerHTML = '<i class="bi bi-check2"></i>';
+    btn.innerHTML = '<i class="bi bi-check2"></i> コピーしました';
+    // Sankey ツールチップがピン固定中なら少し待って閉じる
     setTimeout(() => {
-      btn.classList.remove('copied');
-      btn.innerHTML = '<i class="bi bi-clipboard"></i>';
-    }, 1500);
-  }).catch(() => {
-    // フォールバック: テキストエリア経由
+      if (window._sankeyTooltipUnpin) window._sankeyTooltipUnpin();
+      else {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<i class="bi bi-clipboard"></i>';
+      }
+    }, 800);
+  }
+  navigator.clipboard.writeText(formula).then(onCopied).catch(() => {
     const ta = document.createElement('textarea');
     ta.value = formula; ta.style.position = 'fixed'; ta.style.opacity = '0';
     document.body.appendChild(ta); ta.select(); document.execCommand('copy');
     document.body.removeChild(ta);
-    btn.classList.add('copied');
-    btn.innerHTML = '<i class="bi bi-check2"></i>';
-    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+    onCopied();
   });
 }
 
@@ -2487,27 +2489,48 @@ function renderSankeyDiagram(edges, fields) {
   // ツールチップ（CSS クラスでテーマ対応）
   const tooltip = d3.select('#sankey-container')
     .append('div')
-    .classed('sankey-tooltip', true);
+    .classed('sankey-tooltip', true)
+    .style('pointer-events', 'none');  // ホバー中はマウスイベントを透過
+
+  let _pinned = false;  // ピン固定状態
+
+  // ピン解除 — copyFormula から呼び出せるようにグローバルに登録
+  function unpinTooltip() {
+    _pinned = false;
+    tooltip.style('display', 'none').style('pointer-events', 'none');
+    window._sankeyTooltipUnpin = null;
+  }
+  window._sankeyTooltipUnpin = null;
 
   function positionTooltip(event) {
     const tipNode = tooltip.node();
-    const container = document.getElementById('sankey-container');
-    const cW = container ? container.clientWidth  : 9999;
-    const cH = container ? container.clientHeight : 9999;
+    const cont    = document.getElementById('sankey-container');
+    const cW = cont ? cont.clientWidth  : 9999;
+    const cH = cont ? cont.clientHeight : 9999;
     const tW = tipNode.offsetWidth;
     const tH = tipNode.offsetHeight;
-    const x = event.offsetX;
-    const y = event.offsetY;
+    const x = event.offsetX, y = event.offsetY;
     const left = (x + 14 + tW > cW) ? Math.max(0, x - tW - 14) : x + 14;
     const top  = (y + 14 + tH > cH) ? Math.max(0, y - tH - 14) : y + 14;
     tooltip.style('left', left + 'px').style('top', top + 'px');
   }
-  function showTooltip(event, html) {
-    tooltip.style('display', 'block').html(html);
-    positionTooltip(event);
+
+  function _linkHtml(d, pinned) {
+    const title = `<strong>${esc(d.source.name)} → ${esc(d.target.name)}</strong><hr class="my-1">`;
+    const code  = `<code style="font-size:11px;display:block;white-space:pre-wrap;word-break:break-all">${esc(d.formula)}</code>`;
+    if (pinned) {
+      return title + code
+        + `<div class="d-flex justify-content-end mt-2 gap-1">`
+        + `<button onclick="copyFormula(this)" data-formula="${esc(d.formula)}"
+             class="btn btn-sm btn-primary py-0 px-2" style="font-size:0.75rem">
+             <i class="bi bi-clipboard me-1"></i>コピー</button>`
+        + `<button onclick="window._sankeyTooltipUnpin&&window._sankeyTooltipUnpin()"
+             class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.75rem">✕</button>`
+        + `</div>`;
+    }
+    return title + code
+      + `<div class="text-muted mt-1" style="font-size:0.65rem">クリックで固定してコピー</div>`;
   }
-  function moveTooltip(event) { positionTooltip(event); }
-  function hideTooltip() { tooltip.style('display', 'none'); }
 
   // リンク描画
   svg.append('g').selectAll('path')
@@ -2518,18 +2541,32 @@ function renderSankeyDiagram(edges, fields) {
     .attr('stroke-width',   d => Math.max(1, d.width))
     .attr('fill',           'none')
     .attr('stroke-opacity', isDark ? 0.55 : 0.45)
+    .style('cursor', 'pointer')
     .on('mouseover', function(event, d) {
+      if (_pinned) return;
       d3.select(this).attr('stroke', isDark ? '#6ab0f0' : 'orange').attr('stroke-opacity', 0.9);
-      showTooltip(event,
-        `<strong>${esc(d.source.name)} → ${esc(d.target.name)}</strong><hr class="my-1">`
-        + `<div style="position:relative"><code style="font-size:11px;display:block;padding-right:24px">${esc(d.formula)}</code>`
-        + `<button onclick="copyFormula(this)" data-formula="${esc(d.formula)}" class="btn btn-sm p-0 px-1 btn-outline-secondary copy-formula-btn" style="position:absolute;top:0;right:0;font-size:0.65rem;line-height:1.4;opacity:1"><i class="bi bi-clipboard"></i></button></div>`);
+      tooltip.style('display', 'block').html(_linkHtml(d, false));
+      positionTooltip(event);
     })
-    .on('mousemove', moveTooltip)
-    .on('mouseout',  function() {
+    .on('mousemove', function(event) { if (!_pinned) positionTooltip(event); })
+    .on('mouseout',  function(event, d) {
+      if (_pinned) return;
       d3.select(this).attr('stroke', isDark ? '#3a5a80' : '#ccc').attr('stroke-opacity', isDark ? 0.55 : 0.45);
-      hideTooltip();
+      tooltip.style('display', 'none');
+    })
+    .on('click', function(event, d) {
+      event.stopPropagation();
+      _pinned = true;
+      tooltip
+        .style('display', 'block')
+        .style('pointer-events', 'auto')
+        .html(_linkHtml(d, true));
+      positionTooltip(event);
+      window._sankeyTooltipUnpin = unpinTooltip;
     });
+
+  // SVG 背景クリックでピン解除
+  svg.on('click', function() { if (_pinned) unpinTooltip(); });
 
   // ノード描画
   const node = svg.append('g').selectAll('g')
