@@ -2514,6 +2514,12 @@ function renderSankeyDiagram(edges, fields) {
     const top  = (y + 14 + tH > cH) ? Math.max(0, y - tH - 14) : y + 14;
     tooltip.style('left', left + 'px').style('top', top + 'px');
   }
+  function showTooltip(event, html) {
+    tooltip.style('display', 'block').html(html);
+    positionTooltip(event);
+  }
+  function moveTooltip(event) { positionTooltip(event); }
+  function hideTooltip() { tooltip.style('display', 'none'); }
 
   function _linkHtml(d, pinned) {
     const title = `<strong>${esc(d.source.name)} → ${esc(d.target.name)}</strong><hr class="my-1">`;
