@@ -274,7 +274,9 @@ def fetch_all() -> dict[str, Any]:
         flow_run_map: dict[str, object] = {}
         try:
             run_req = TSC.RequestOptions(pagesize=100)
-            recent_runs, _ = server.flow_runs.get(run_req)
+            _flow_run_result = server.flow_runs.get(run_req)
+            # TSC バージョンにより (list, pagination) またはリスト単体を返す
+            recent_runs = _flow_run_result[0] if isinstance(_flow_run_result, tuple) else _flow_run_result
             for run in recent_runs:
                 fid = getattr(run, "flow_id", None)
                 completed = getattr(run, "completed_at", getattr(run, "ended_at", None))
