@@ -2532,8 +2532,15 @@ function renderSankeyDiagram(edges, fields) {
       + `<div class="text-muted mt-1" style="font-size:0.65rem">クリックで固定してコピー</div>`;
   }
 
+  // リンクの色をデフォルトに戻すヘルパー
+  function resetAllLinks() {
+    svg.selectAll('path')
+      .attr('stroke',         isDark ? '#3a5a80' : '#ccc')
+      .attr('stroke-opacity', isDark ? 0.55 : 0.45);
+  }
+
   // リンク描画
-  svg.append('g').selectAll('path')
+  const linkPaths = svg.append('g').selectAll('path')
     .data(graph.links)
     .join('path')
     .attr('d',              d3.sankeyLinkHorizontal())
@@ -2544,14 +2551,16 @@ function renderSankeyDiagram(edges, fields) {
     .style('cursor', 'pointer')
     .on('mouseover', function(event, d) {
       if (_pinned) return;
+      // 前のハイライトを全消し → このリンクだけハイライト
+      resetAllLinks();
       d3.select(this).attr('stroke', isDark ? '#6ab0f0' : 'orange').attr('stroke-opacity', 0.9);
       tooltip.style('display', 'block').html(_linkHtml(d, false));
       positionTooltip(event);
     })
     .on('mousemove', function(event) { if (!_pinned) positionTooltip(event); })
-    .on('mouseout',  function(event, d) {
+    .on('mouseout',  function() {
       if (_pinned) return;
-      d3.select(this).attr('stroke', isDark ? '#3a5a80' : '#ccc').attr('stroke-opacity', isDark ? 0.55 : 0.45);
+      resetAllLinks();
       tooltip.style('display', 'none');
     })
     .on('click', function(event, d) {
@@ -2565,8 +2574,11 @@ function renderSankeyDiagram(edges, fields) {
       window._sankeyTooltipUnpin = unpinTooltip;
     });
 
-  // SVG 背景クリックでピン解除
-  svg.on('click', function() { if (_pinned) unpinTooltip(); });
+  // SVG 背景クリックでピン解除・全リンクリセット
+  svg.on('click', function() {
+    if (_pinned) unpinTooltip();
+    resetAllLinks();
+  });
 
   // ノード描画
   const node = svg.append('g').selectAll('g')
@@ -2591,7 +2603,7 @@ function renderSankeyDiagram(edges, fields) {
     })
     .on('mousemove', moveTooltip)
     .on('mouseout',  function() {
-      svg.selectAll('path').attr('stroke', isDark ? '#3a5a80' : '#ccc').attr('stroke-opacity', isDark ? 0.55 : 0.45);
+      resetAllLinks();
       hideTooltip();
     });
 
