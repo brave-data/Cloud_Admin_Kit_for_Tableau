@@ -139,6 +139,7 @@ async def get_status():
             "status":     _cache["status"],
             "error":      _cache["error"],
             "fetched_at": _cache["fetched_at"],
+            "version":    app.version,
         }
 
 

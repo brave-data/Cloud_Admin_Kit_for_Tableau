@@ -150,6 +150,15 @@
   [data-theme="dark"] code { color: var(--text-muted2); background: transparent; }
   [data-theme="dark"] .fw-semibold, [data-theme="dark"] .fw-bold { color: var(--text-body); }
   [data-theme="dark"] small { color: var(--text-muted2); }
+  /* コピーボタン */
+  .copy-formula-btn { opacity: 0; transition: opacity .15s; }
+  tr:hover .copy-formula-btn, .copy-formula-btn:focus { opacity: 1; }
+  .copy-formula-btn.copied { color: #27ae60 !important; border-color: #27ae60 !important; }
+
+  /* CSVダウンロードボタン */
+  .btn-csv { font-size: 0.72rem; padding: 2px 7px; }
+  .tbl-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; min-height:26px; }
+
   /* Accordion dark mode */
   [data-theme="dark"] .accordion-item {
     background-color: var(--bg-card);
@@ -384,6 +393,7 @@
 <nav class="navbar navbar-dark px-3 py-2">
   <span class="navbar-brand">
     <i class="bi bi-bar-chart-fill me-2"></i>Tableau Cloud Manager
+    <span id="app-version" class="badge bg-secondary ms-1" style="font-size:0.62rem;font-weight:400;opacity:0.75;vertical-align:middle"></span>
   </span>
   <div class="d-flex align-items-center gap-2">
     <span id="fetched-label" class="badge badge-fetched text-white"></span>
@@ -497,6 +507,7 @@
     <div class="tab-pane fade show active" id="tab-wb">
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
+          <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-wb','workbooks')"><i class="bi bi-download me-1"></i>CSV</button></div>
           <table id="tbl-wb" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_wb_name">ワークブック名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
@@ -512,6 +523,7 @@
     <div class="tab-pane fade" id="tab-ds">
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
+          <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-ds','datasources')"><i class="bi bi-download me-1"></i>CSV</button></div>
           <table id="tbl-ds" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_ds_name">データソース名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
@@ -527,6 +539,7 @@
     <div class="tab-pane fade" id="tab-views">
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
+          <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-views','views')"><i class="bi bi-download me-1"></i>CSV</button></div>
           <table id="tbl-views" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_view_name">ビュー名</th><th data-i18n="th_workbook">ワークブック</th><th data-i18n="th_owner">オーナー</th>
@@ -542,6 +555,7 @@
     <div class="tab-pane fade" id="tab-users">
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
+          <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-users','users')"><i class="bi bi-download me-1"></i>CSV</button></div>
           <table id="tbl-users" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_name">名前</th><th data-i18n="th_email">メール</th><th data-i18n="th_license">ライセンス</th>
@@ -557,6 +571,7 @@
     <div class="tab-pane fade" id="tab-flows">
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
+          <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-flows','flows')"><i class="bi bi-download me-1"></i>CSV</button></div>
           <table id="tbl-flows" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_flow_name">フロー名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
@@ -572,6 +587,7 @@
     <div class="tab-pane fade" id="tab-schedules">
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
+          <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-schedules','schedules')"><i class="bi bi-download me-1"></i>CSV</button></div>
           <table id="tbl-schedules" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_target">対象</th><th data-i18n="th_type">タイプ</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
@@ -629,9 +645,12 @@
 
           <!-- 計算フィールド一覧 -->
           <div class="mb-4">
-            <h6 class="fw-bold text-primary mb-2">
-              <i class="bi bi-table me-1"></i><span data-i18n="fields_list">計算フィールド一覧</span>
-            </h6>
+            <div class="tbl-header-row">
+              <h6 class="fw-bold text-primary mb-0">
+                <i class="bi bi-table me-1"></i><span data-i18n="fields_list">計算フィールド一覧</span>
+              </h6>
+              <button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-fields','calculated_fields')"><i class="bi bi-download me-1"></i>CSV</button>
+            </div>
             <table id="tbl-fields" class="table table-sm table-hover w-100">
               <thead><tr>
                 <th data-i18n="th_datasource">データソース</th>
@@ -1586,6 +1605,47 @@ function initTable(id, order, opts) {
 }
 
 // ============================================================
+// CSV エクスポート
+// ============================================================
+function exportCSV(tableId, filename) {
+  if (!$.fn.DataTable.isDataTable('#' + tableId)) return;
+  const dt = $('#' + tableId).DataTable();
+
+  // ヘッダー（HTML タグ・改行を除去）
+  const headers = [];
+  document.querySelectorAll('#' + tableId + ' thead th').forEach(th => {
+    headers.push(th.textContent.trim());
+  });
+
+  // 全行（検索フィルタ適用済み）
+  const rows = [headers];
+  dt.rows({ search: 'applied' }).every(function () {
+    const tds = this.node().querySelectorAll('td');
+    const cells = [];
+    tds.forEach(td => {
+      // data-export 属性があればそちらを優先（HTML を含む列用）
+      const raw = td.dataset.export !== undefined
+        ? td.dataset.export
+        : td.textContent.trim().replace(/\s+/g, ' ');
+      cells.push(raw);
+    });
+    rows.push(cells);
+  });
+
+  const csv = rows.map(row =>
+    row.map(cell => '"' + String(cell ?? '').replace(/"/g, '""') + '"').join(',')
+  ).join('\r\n');
+
+  // BOM 付き UTF-8 → Excel でも文字化けしない
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename + '.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ============================================================
 // ワークブック行展開 — 状態
 // ============================================================
 let _wbDt = null;          // DataTables instance for workbooks
@@ -2090,6 +2150,10 @@ async function pollStatus() {
       data.fetched_at
         ? _t.fetched_label + new Date(data.fetched_at).toLocaleString(window._lang === 'en' ? 'en-US' : 'ja-JP')
         : '';
+    if (data.version) {
+      const vEl = document.getElementById('app-version');
+      if (vEl && !vEl.textContent) vEl.textContent = 'v' + data.version;
+    }
 
     if (data.status === 'ok') {
       clearInterval(_pollTimer);
@@ -2320,17 +2384,46 @@ function renderFieldTable(fields) {
     const color   = dsColors[f.datasource] || '#aaa';
     const preview = f.formula.length > 80 ? esc(f.formula.slice(0, 80)) + '…' : esc(f.formula);
     return `<tr>
-      <td>
+      <td data-export="${esc(f.datasource)}">
         <span class="badge" style="background:${color}">${esc(f.datasource)}</span>
       </td>
       <td class="fw-semibold">${esc(f.field)}</td>
-      <td>
-        <code class="small text-muted" title="${esc(f.formula)}">${preview}</code>
+      <td data-export="${esc(f.formula)}">
+        <div class="d-flex align-items-start gap-1">
+          <code class="small text-muted flex-grow-1">${preview}</code>
+          <button class="btn btn-sm p-0 px-1 btn-outline-secondary copy-formula-btn"
+                  data-formula="${esc(f.formula)}" title="計算式をコピー"
+                  style="font-size:0.7rem;line-height:1.4;flex-shrink:0"
+                  onclick="event.stopPropagation();copyFormula(this)">
+            <i class="bi bi-clipboard"></i>
+          </button>
+        </div>
       </td>
     </tr>`;
   }).join('');
 
   initTable('tbl-fields', [[0, 'asc']], { pageLength: 15 });
+}
+
+function copyFormula(btn) {
+  const formula = btn.dataset.formula;
+  navigator.clipboard.writeText(formula).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="bi bi-check2"></i>';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<i class="bi bi-clipboard"></i>';
+    }, 1500);
+  }).catch(() => {
+    // フォールバック: テキストエリア経由
+    const ta = document.createElement('textarea');
+    ta.value = formula; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="bi bi-check2"></i>';
+    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+  });
 }
 
 /** D3 v7 + d3-sankey で依存関係図を描画 */
@@ -2429,7 +2522,8 @@ function renderSankeyDiagram(edges, fields) {
       d3.select(this).attr('stroke', isDark ? '#6ab0f0' : 'orange').attr('stroke-opacity', 0.9);
       showTooltip(event,
         `<strong>${esc(d.source.name)} → ${esc(d.target.name)}</strong><hr class="my-1">`
-        + `<code style="font-size:11px">${esc(d.formula)}</code>`);
+        + `<div style="position:relative"><code style="font-size:11px;display:block;padding-right:24px">${esc(d.formula)}</code>`
+        + `<button onclick="copyFormula(this)" data-formula="${esc(d.formula)}" class="btn btn-sm p-0 px-1 btn-outline-secondary copy-formula-btn" style="position:absolute;top:0;right:0;font-size:0.65rem;line-height:1.4;opacity:1"><i class="bi bi-clipboard"></i></button></div>`);
     })
     .on('mousemove', moveTooltip)
     .on('mouseout',  function() {
