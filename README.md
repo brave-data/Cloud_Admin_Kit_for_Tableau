@@ -1,6 +1,6 @@
 # Tableau Cloud Manager
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Polyform Noncommercial](https://img.shields.io/badge/License-Polyform_NC-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 
 > **日本語版 README**: [README_ja.md](README_ja.md)
