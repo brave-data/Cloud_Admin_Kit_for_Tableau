@@ -11,4 +11,5 @@ Thumbs.db
 dist/
 build/
 reports/
+maintenance_report.json
 .claude/
