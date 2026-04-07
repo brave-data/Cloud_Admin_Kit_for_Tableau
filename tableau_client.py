@@ -22,6 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# エラー分類ヘルパー
+# ---------------------------------------------------------------------------
+
+def _classify_error(exc: Exception, resource: str) -> dict[str, str]:
+    """例外を分類して警告辞書を返す（fetch_warnings リスト用）"""
+    msg = str(exc)
+    if "403" in msg:
+        error_type = "permission"
+    elif "429" in msg:
+        error_type = "rate_limit"
+    else:
+        error_type = "general"
+    return {"resource": resource, "type": error_type, "message": msg[:300]}
+
+
+# ---------------------------------------------------------------------------
 # 接続ヘルパー
 # ---------------------------------------------------------------------------
 
@@ -61,6 +77,7 @@ def _days_ago(dt: datetime | None) -> int | None:
 def fetch_all() -> dict[str, Any]:
     """Tableau Cloud から全管理情報を取得して辞書で返す"""
     server, auth = _make_server()
+    fetch_warnings: list[dict[str, str]] = []
 
     with server.auth.sign_in(auth):
 
@@ -71,6 +88,7 @@ def fetch_all() -> dict[str, Any]:
             users_raw = list(TSC.Pager(server.users))
         except Exception as exc:
             logger.warning("ユーザー一覧の取得に失敗しました（権限不足の可能性）: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "ユーザー一覧"))
             users_raw = []
         user_map  = {u.id: (u.fullname or u.name) for u in users_raw}
 
@@ -90,6 +108,7 @@ def fetch_all() -> dict[str, Any]:
             projects_raw = list(TSC.Pager(server.projects))
         except Exception as exc:
             logger.warning("プロジェクト一覧の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "プロジェクト一覧"))
             projects_raw = []
         project_map  = {p.id: p.name for p in projects_raw}
 
@@ -108,6 +127,7 @@ def fetch_all() -> dict[str, Any]:
             workbooks_raw = list(TSC.Pager(server.workbooks))
         except Exception as exc:
             logger.warning("ワークブック一覧の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "ワークブック一覧"))
             workbooks_raw = []
         workbooks = []
         for wb in workbooks_raw:
@@ -131,6 +151,7 @@ def fetch_all() -> dict[str, Any]:
             datasources_raw = list(TSC.Pager(server.datasources))
         except Exception as exc:
             logger.warning("データソース一覧の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "データソース一覧"))
             datasources_raw = []
         datasources = []
         for ds in datasources_raw:
@@ -148,6 +169,24 @@ def fetch_all() -> dict[str, Any]:
                 "description":  ds.description or "",
             })
 
+        # ── ゴーストデータソース検出 ─────────────────────────
+        # 公開済みデータソースのうち、どのワークブックからも参照されていないものを特定
+        ghost_ds_ids: set[str] = {ds.id for ds in datasources_raw}
+        try:
+            for wb in workbooks_raw:
+                try:
+                    server.workbooks.populate_connections(wb)
+                    for conn in (wb.connections or []):
+                        ds_id = getattr(conn, "datasource_id", None)
+                        if ds_id:
+                            ghost_ds_ids.discard(ds_id)
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.warning("ゴーストデータソース検出に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "ゴーストデータソース検出"))
+            ghost_ds_ids = set()
+
         # ── ビュー (使用状況付き) ───────────────────────────
         # TSC 0.30+ では usage=True を views.get() に直接渡す必要がある
         views_raw = []
@@ -161,6 +200,7 @@ def fetch_all() -> dict[str, Any]:
                 req.pagenumber += 1
         except Exception as exc:
             logger.warning("ビュー一覧の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "ビュー一覧"))
         views = []
         for v in views_raw:
             # TSC は last_viewed_at を直接公開しないため、利用可能な属性を試みる
@@ -193,6 +233,7 @@ def fetch_all() -> dict[str, Any]:
             jobs_raw = list(TSC.Pager(server.jobs, request_opts=job_req))[:200]
         except Exception as exc:
             logger.warning("ジョブ一覧の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "ジョブ一覧"))
             jobs_raw = []
 
         jobs = []
@@ -261,6 +302,7 @@ def fetch_all() -> dict[str, Any]:
                 })
         except Exception as exc:
             logger.warning("抽出スケジュールの取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "抽出スケジュール"))
             schedules = []
 
         # ── Prep フロー ──────────────────────────────────────
@@ -269,6 +311,7 @@ def fetch_all() -> dict[str, Any]:
             flows_raw = list(TSC.Pager(server.flows))
         except Exception as exc:
             logger.warning("Prepフロー一覧の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "Prepフロー一覧"))
 
         # フロー実行履歴（最新1ページ分）でフローIDごとの最終実行日を取得
         flow_run_map: dict[str, object] = {}
@@ -286,6 +329,7 @@ def fetch_all() -> dict[str, Any]:
                         flow_run_map[fid] = completed
         except Exception as exc:
             logger.warning("フロー実行履歴の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "フロー実行履歴"))
 
         flows = []
         for fl in flows_raw:
@@ -322,6 +366,8 @@ def fetch_all() -> dict[str, Any]:
 
         failed_jobs = [j for j in jobs if j["status"] == "Failed"]
 
+        ghost_datasources = [ds for ds in datasources if ds["id"] in ghost_ds_ids]
+
         summary = {
             "total_users":        len(users),
             "total_workbooks":    len(workbooks),
@@ -335,18 +381,21 @@ def fetch_all() -> dict[str, Any]:
             "unused_workbooks":   len(unused_wb),
             "inactive_users_90d": len(inactive_users),
             "failed_jobs_recent": len(failed_jobs),
+            "ghost_datasources":  len(ghost_datasources),
             "top_views":          top_views,
         }
 
         return {
-            "summary":     summary,
-            "users":       users,
-            "workbooks":   workbooks,
-            "datasources": datasources,
-            "views":       views,
-            "schedules":   schedules,
-            "flows":       flows,
-            "fetched_at":  datetime.now(timezone.utc).isoformat(),
+            "summary":          summary,
+            "users":            users,
+            "workbooks":        workbooks,
+            "datasources":      datasources,
+            "views":            views,
+            "schedules":        schedules,
+            "flows":            flows,
+            "ghost_datasources": ghost_datasources,
+            "fetch_warnings":   fetch_warnings,
+            "fetched_at":       datetime.now(timezone.utc).isoformat(),
         }
 
 
@@ -450,6 +499,19 @@ def _extract_twb_content(file_path: str) -> str | None:
     return None
 
 
+def _strip_formula_for_deps(formula: str) -> str:
+    """
+    依存関係抽出用に数式を前処理する。
+    - シングルクォート文字列リテラル内の [] を除去（文字列中の [field] を誤検出しない）
+    - // 行コメントを除去
+    """
+    # 文字列リテラル（'...'）を空文字列に置換
+    formula = re.sub(r"'[^']*'", "''", formula)
+    # // 行コメントを除去
+    formula = re.sub(r"//[^\n]*", "", formula)
+    return formula
+
+
 def _parse_twb_fields(twb_content: str) -> dict[str, Any]:
     """
     TWB XML を解析して以下を返す:
@@ -536,7 +598,8 @@ def _parse_twb_fields(twb_content: str) -> dict[str, Any]:
 
     for row in fields:
         target = row["field"]
-        for m in re.finditer(r"\[([^\]]+)\]", row["formula"]):
+        stripped = _strip_formula_for_deps(row["formula"])
+        for m in re.finditer(r"\[([^\]]+)\]", stripped):
             token = m.group(1)
             # Parameters 参照はスキップ
             if "Parameters" in token:

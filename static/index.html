@@ -421,6 +421,13 @@
   <span id="alert-msg"></span>
 </div>
 
+<!-- ── Warning bar (部分的な取得失敗) ──────────────────── -->
+<div id="warning-bar" class="alert alert-warning alert-dismissible m-3 mb-0 py-2" style="display:none">
+  <button type="button" class="btn-close py-2" onclick="document.getElementById('warning-bar').style.display='none'" aria-label="Close"></button>
+  <i class="bi bi-exclamation-circle-fill me-2"></i>
+  <span id="warning-msg"></span>
+</div>
+
 <!-- ── Main content ────────────────────────────────────── -->
 <div id="main-content" class="container-fluid px-3 pt-3 pb-5" style="display:none">
 
@@ -479,6 +486,14 @@
         <div class="icon" style="color:#EC4B4B"><i class="bi bi-person-slash"></i></div>
         <div class="value" style="color:#EC4B4B" id="s-inactive">—</div>
         <div class="label" data-i18n="lbl_inactive">90日以上未ログイン</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-ghost-ds" class="stat-card card-warn card p-3 h-100" onclick="switchToSection('ds')" title="クリックしてデータソース一覧を表示">
+        <div class="icon" style="color:#EC4B4B"><i class="bi bi-database-x"></i></div>
+        <div class="value" style="color:#EC4B4B" id="s-ghost-ds">—</div>
+        <div class="label" data-i18n="lbl_ghost_ds">未参照データソース</div>
         <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
       </div>
     </div>
@@ -896,6 +911,7 @@ const I18N = {
     lbl_wb: 'ワークブック', lbl_flows: 'Prepフロー', lbl_ds: 'データソース',
     lbl_views: 'ビュー（合計）', lbl_users: 'ユーザー',
     lbl_stale: '180日以上未閲覧', lbl_inactive: '90日以上未ログイン',
+    lbl_ghost_ds: '未参照データソース',
     nav_schedules: 'スケジュール管理', nav_topviews: 'Top ビュー', nav_fields: '計算フィールド分析',
     fields_list: '計算フィールド一覧', fields_sankey: 'フィールド依存関係図',
     fields_sankey_hint: 'ノード色はデータソース別。リンクにホバーすると計算式を確認できます。',
@@ -975,6 +991,7 @@ const I18N = {
     lbl_wb: 'Workbooks', lbl_flows: 'Prep Flows', lbl_ds: 'Data Sources',
     lbl_views: 'Views (Total)', lbl_users: 'Users',
     lbl_stale: 'Not Viewed 180+ Days', lbl_inactive: 'Inactive 90+ Days',
+    lbl_ghost_ds: 'Unreferenced Data Sources',
     nav_schedules: 'Schedules', nav_topviews: 'Top Views', nav_fields: 'Calculated Fields',
     fields_list: 'Calculated Field List', fields_sankey: 'Field Dependency Diagram',
     fields_sankey_hint: 'Node colors are per data source. Hover over links to see formulas.',
@@ -1697,6 +1714,7 @@ function renderSummary(s) {
   document.getElementById('s-stale').textContent   = (s.stale_workbooks ?? 0) + (s.stale_datasources ?? 0);
   document.getElementById('s-inactive').textContent = s.inactive_users_90d  ?? 0;
   document.getElementById('s-flows').textContent   = s.total_flows          ?? 0;
+  document.getElementById('s-ghost-ds').textContent = s.ghost_datasources   ?? 0;
 }
 
 function renderWorkbooks(rows) {
@@ -2162,6 +2180,14 @@ async function pollStatus() {
       document.getElementById('main-content').style.display   = 'block';
       document.getElementById('btn-refresh').disabled = false;
       await loadAll();
+      if (data.fetch_warnings && data.fetch_warnings.length > 0) {
+        const typeLabel = { permission: '権限エラー', rate_limit: 'レート制限', general: 'エラー' };
+        const typeLabelEn = { permission: 'Permission error', rate_limit: 'Rate limit', general: 'Error' };
+        const tl = window._lang === 'en' ? typeLabelEn : typeLabel;
+        const msgs = data.fetch_warnings.map(w => `[${tl[w.type] || w.type}] ${w.resource}: ${w.message}`);
+        document.getElementById('warning-msg').textContent = msgs.join(' / ');
+        document.getElementById('warning-bar').style.display = 'block';
+      }
     } else if (data.status === 'idle') {
       // 初回起動 — データ未取得。オーバーレイを消して更新を促す
       clearInterval(_pollTimer);
