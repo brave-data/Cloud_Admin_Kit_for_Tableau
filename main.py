@@ -1,6 +1,6 @@
 """
 main.py
-Tableau Cloud Manager — FastAPI ローカルサーバー
+Cloud Admin Kit for Tableau — FastAPI ローカルサーバー
 
 起動方法:
     python main.py
@@ -106,7 +106,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Tableau Cloud Manager",
+    title="Cloud Admin Kit for Tableau",
     description="Tableau Cloud の管理情報をブラウザで確認・更新するローカルツール",
     version="1.1.0",
     lifespan=lifespan,
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     # ※ 認証なしのため、0.0.0.0 での公開は同一ネットワーク全体に管理情報が見えます。
     host = os.getenv("HOST", "127.0.0.1")
     print(f"\n{'='*55}")
-    print("  Tableau Cloud Manager")
+    print("  Cloud Admin Kit for Tableau")
     print(f"{'='*55}")
     print(f"  ブラウザで開く → http://localhost:{port}")
     print(f"  API ドキュメント → http://localhost:{port}/docs")

@@ -1,4 +1,4 @@
-# セットアップガイド — Tableau Cloud Manager
+# セットアップガイド — Cloud Admin Kit for Tableau
 
 > **English version**: [SETUP.md](SETUP.md)
 
