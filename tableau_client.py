@@ -366,7 +366,11 @@ def fetch_all() -> dict[str, Any]:
 
         failed_jobs = [j for j in jobs if j["status"] == "Failed"]
 
-        ghost_datasources = [ds for ds in datasources if ds["id"] in ghost_ds_ids]
+        # is_ghost フラグを各データソースに付与（フロントエンドでのバッジ表示用）
+        for ds in datasources:
+            ds["is_ghost"] = ds["id"] in ghost_ds_ids
+
+        ghost_datasources = [ds for ds in datasources if ds["is_ghost"]]
 
         summary = {
             "total_users":        len(users),
@@ -381,7 +385,8 @@ def fetch_all() -> dict[str, Any]:
             "unused_workbooks":   len(unused_wb),
             "inactive_users_90d": len(inactive_users),
             "failed_jobs_recent": len(failed_jobs),
-            "ghost_datasources":  len(ghost_datasources),
+            "ghost_datasources":        len(ghost_datasources),
+            "stale_refresh_datasources": len([d for d in datasources if (d["days_stale"] or 0) > 30]),
             "top_views":          top_views,
         }
 
