@@ -1,4 +1,4 @@
-# Tableau Cloud Manager
+# Cloud Admin Kit for Tableau
 
 [![License: Polyform Noncommercial](https://img.shields.io/badge/License-Polyform_NC-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
@@ -13,7 +13,7 @@ A local web app for **centralized management, change tracking, and maintenance e
 
 Tableau Cloud's admin screens are spread across multiple pages. Answering questions like "Which data sources are used by which dashboards?", "What changed since yesterday?", or "Who hasn't logged in for months?" requires navigating between many different views.
 
-**Tableau Cloud Manager** consolidates the information administrators actually need for day-to-day maintenance into a single screen, preventing missed changes before they become problems.
+**Cloud Admin Kit for Tableau** consolidates the information administrators actually need for day-to-day maintenance into a single screen, preventing missed changes before they become problems.
 
 ---
 

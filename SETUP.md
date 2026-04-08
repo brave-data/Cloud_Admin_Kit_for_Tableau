@@ -1,4 +1,4 @@
-# Setup Guide — Tableau Cloud Manager
+# Setup Guide — Cloud Admin Kit for Tableau
 
 > **日本語版**: [SETUP_ja.md](SETUP_ja.md)
 

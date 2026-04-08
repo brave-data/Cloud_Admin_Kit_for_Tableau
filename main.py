@@ -1,6 +1,6 @@
 """
 main.py
-Tableau Cloud Manager — FastAPI ローカルサーバー
+Cloud Admin Kit for Tableau — FastAPI ローカルサーバー
 
 起動方法:
     python main.py
@@ -58,10 +58,11 @@ _check_env()
 # インメモリキャッシュ
 # ---------------------------------------------------------------------------
 _cache: dict[str, Any] = {
-    "data":       None,   # fetch_all() の戻り値
-    "status":     "idle", # idle | loading | ok | error
-    "error":      None,
-    "fetched_at": None,
+    "data":           None,   # fetch_all() の戻り値
+    "status":         "idle", # idle | loading | ok | error
+    "error":          None,
+    "fetched_at":     None,
+    "fetch_warnings": [],     # 部分的な取得失敗の警告リスト
 }
 _lock = threading.Lock()
 
@@ -82,9 +83,10 @@ def _do_fetch():
     try:
         result = fetch_all()
         with _lock:
-            _cache["data"]       = result
-            _cache["status"]     = "ok"
-            _cache["fetched_at"] = result["fetched_at"]
+            _cache["data"]           = result
+            _cache["status"]         = "ok"
+            _cache["fetched_at"]     = result["fetched_at"]
+            _cache["fetch_warnings"] = result.get("fetch_warnings", [])
     except Exception as exc:
         with _lock:
             _cache["status"] = "error"
@@ -104,9 +106,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Tableau Cloud Manager",
+    title="Cloud Admin Kit for Tableau",
     description="Tableau Cloud の管理情報をブラウザで確認・更新するローカルツール",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -136,10 +138,11 @@ async def get_status():
     """接続状態とキャッシュの状態を返す"""
     with _lock:
         return {
-            "status":     _cache["status"],
-            "error":      _cache["error"],
-            "fetched_at": _cache["fetched_at"],
-            "version":    app.version,
+            "status":          _cache["status"],
+            "error":           _cache["error"],
+            "fetched_at":      _cache["fetched_at"],
+            "version":         app.version,
+            "fetch_warnings":  _cache["fetch_warnings"],
         }
 
 
@@ -282,7 +285,7 @@ if __name__ == "__main__":
     # ※ 認証なしのため、0.0.0.0 での公開は同一ネットワーク全体に管理情報が見えます。
     host = os.getenv("HOST", "127.0.0.1")
     print(f"\n{'='*55}")
-    print("  Tableau Cloud Manager")
+    print("  Cloud Admin Kit for Tableau")
     print(f"{'='*55}")
     print(f"  ブラウザで開く → http://localhost:{port}")
     print(f"  API ドキュメント → http://localhost:{port}/docs")

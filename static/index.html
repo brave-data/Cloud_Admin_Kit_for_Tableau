@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tableau Cloud Manager</title>
+<title>Cloud Admin Kit for Tableau</title>
 
 <!-- Bootstrap 5 -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -392,7 +392,7 @@
 <!-- ── Navbar ───────────────────────────────────────────── -->
 <nav class="navbar navbar-dark px-3 py-2">
   <span class="navbar-brand">
-    <i class="bi bi-bar-chart-fill me-2"></i>Tableau Cloud Manager
+    <i class="bi bi-bar-chart-fill me-2"></i>Cloud Admin Kit for Tableau
     <span id="app-version" class="badge bg-secondary ms-1" style="font-size:0.62rem;font-weight:400;opacity:0.75;vertical-align:middle"></span>
   </span>
   <div class="d-flex align-items-center gap-2">
@@ -419,6 +419,13 @@
 <div id="alert-bar" class="alert alert-danger m-3 mb-0 py-2">
   <i class="bi bi-exclamation-triangle-fill me-2"></i>
   <span id="alert-msg"></span>
+</div>
+
+<!-- ── Warning bar (部分的な取得失敗) ──────────────────── -->
+<div id="warning-bar" class="alert alert-warning alert-dismissible m-3 mb-0 py-2" style="display:none">
+  <button type="button" class="btn-close py-2" onclick="document.getElementById('warning-bar').style.display='none'" aria-label="Close"></button>
+  <i class="bi bi-exclamation-circle-fill me-2"></i>
+  <span id="warning-msg"></span>
 </div>
 
 <!-- ── Main content ────────────────────────────────────── -->
@@ -479,6 +486,14 @@
         <div class="icon" style="color:#EC4B4B"><i class="bi bi-person-slash"></i></div>
         <div class="value" style="color:#EC4B4B" id="s-inactive">—</div>
         <div class="label" data-i18n="lbl_inactive">90日以上未ログイン</div>
+        <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <div id="scard-ghost-ds" class="stat-card card-warn card p-3 h-100" onclick="switchToSection('ds')" title="クリックしてデータソース一覧を表示">
+        <div class="icon" style="color:#EC4B4B"><i class="bi bi-database-x"></i></div>
+        <div class="value" style="color:#EC4B4B" id="s-ghost-ds">—</div>
+        <div class="label" data-i18n="lbl_ghost_ds">未参照データソース</div>
         <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
       </div>
     </div>
@@ -888,7 +903,7 @@ async function fetchJSON(url) {
 // ============================================================
 // 国際化 (i18n)
 // ============================================================
-window._lang = localStorage.getItem('tcm_lang') || 'ja';
+window._lang = localStorage.getItem('cakt_lang') || 'ja';
 
 const I18N = {
   ja: {
@@ -896,6 +911,7 @@ const I18N = {
     lbl_wb: 'ワークブック', lbl_flows: 'Prepフロー', lbl_ds: 'データソース',
     lbl_views: 'ビュー（合計）', lbl_users: 'ユーザー',
     lbl_stale: '180日以上未閲覧', lbl_inactive: '90日以上未ログイン',
+    lbl_ghost_ds: '未参照データソース',
     nav_schedules: 'スケジュール管理', nav_topviews: 'Top ビュー', nav_fields: '計算フィールド分析',
     fields_list: '計算フィールド一覧', fields_sankey: 'フィールド依存関係図',
     fields_sankey_hint: 'ノード色はデータソース別。リンクにホバーすると計算式を確認できます。',
@@ -975,6 +991,7 @@ const I18N = {
     lbl_wb: 'Workbooks', lbl_flows: 'Prep Flows', lbl_ds: 'Data Sources',
     lbl_views: 'Views (Total)', lbl_users: 'Users',
     lbl_stale: 'Not Viewed 180+ Days', lbl_inactive: 'Inactive 90+ Days',
+    lbl_ghost_ds: 'Unreferenced Data Sources',
     nav_schedules: 'Schedules', nav_topviews: 'Top Views', nav_fields: 'Calculated Fields',
     fields_list: 'Calculated Field List', fields_sankey: 'Field Dependency Diagram',
     fields_sankey_hint: 'Node colors are per data source. Hover over links to see formulas.',
@@ -1053,7 +1070,7 @@ const I18N = {
 
 function applyLang(lang) {
   window._lang = lang;
-  localStorage.setItem('tcm_lang', lang);
+  localStorage.setItem('cakt_lang', lang);
   const t = I18N[lang] || I18N.ja;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.dataset.i18n;
@@ -1091,7 +1108,7 @@ function toggleLang() {
 // ============================================================
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('tcm_theme', theme);
+  localStorage.setItem('cakt_theme', theme);
   const icon = document.getElementById('dark-icon');
   if (icon) {
     icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
@@ -1105,23 +1122,23 @@ function toggleDarkMode() {
 
 // 起動時に保存済みテーマ・言語を適用
 (function initPrefs() {
-  const savedTheme = localStorage.getItem('tcm_theme') || 'light';
+  const savedTheme = localStorage.getItem('cakt_theme') || 'light';
   applyTheme(savedTheme);
-  const savedLang = localStorage.getItem('tcm_lang') || 'ja';
+  const savedLang = localStorage.getItem('cakt_lang') || 'ja';
   if (savedLang !== 'ja') applyLang(savedLang);
 })();
 
 // ============================================================
 // 差分比較タブ
 // ============================================================
-// tcm_snap_cur  = 今回ロードしたデータ（次回比較のベース）
-// tcm_snap_prev = 前回ロードしたデータ（今回の比較対象）
-const SNAP_CUR_KEY  = 'tcm_snap_cur';
-const SNAP_PREV_KEY = 'tcm_snap_prev';
+// cakt_snap_cur  = 今回ロードしたデータ（次回比較のベース）
+// cakt_snap_prev = 前回ロードしたデータ（今回の比較対象）
+const SNAP_CUR_KEY  = 'cakt_snap_cur';
+const SNAP_PREV_KEY = 'cakt_snap_prev';
 
 // KTW計算フィールド用スナップショットキー
-const KTW_CUR_KEY  = 'tcm_ktw_cur';
-const KTW_PREV_KEY = 'tcm_ktw_prev';
+const KTW_CUR_KEY  = 'cakt_ktw_cur';
+const KTW_PREV_KEY = 'cakt_ktw_prev';
 
 function rotateKtwSnapshot(data) {
   try {
@@ -1697,6 +1714,7 @@ function renderSummary(s) {
   document.getElementById('s-stale').textContent   = (s.stale_workbooks ?? 0) + (s.stale_datasources ?? 0);
   document.getElementById('s-inactive').textContent = s.inactive_users_90d  ?? 0;
   document.getElementById('s-flows').textContent   = s.total_flows          ?? 0;
+  document.getElementById('s-ghost-ds').textContent = s.ghost_datasources   ?? 0;
 }
 
 function renderWorkbooks(rows) {
@@ -2162,6 +2180,14 @@ async function pollStatus() {
       document.getElementById('main-content').style.display   = 'block';
       document.getElementById('btn-refresh').disabled = false;
       await loadAll();
+      if (data.fetch_warnings && data.fetch_warnings.length > 0) {
+        const typeLabel = { permission: '権限エラー', rate_limit: 'レート制限', general: 'エラー' };
+        const typeLabelEn = { permission: 'Permission error', rate_limit: 'Rate limit', general: 'Error' };
+        const tl = window._lang === 'en' ? typeLabelEn : typeLabel;
+        const msgs = data.fetch_warnings.map(w => `[${tl[w.type] || w.type}] ${w.resource}: ${w.message}`);
+        document.getElementById('warning-msg').textContent = msgs.join(' / ');
+        document.getElementById('warning-bar').style.display = 'block';
+      }
     } else if (data.status === 'idle') {
       // 初回起動 — データ未取得。オーバーレイを消して更新を促す
       clearInterval(_pollTimer);
