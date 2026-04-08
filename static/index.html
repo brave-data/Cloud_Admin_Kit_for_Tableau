@@ -632,7 +632,14 @@
           <div class="position-relative" id="wb-search-wrapper" style="min-width:260px;max-width:500px;flex:1 1 260px">
             <input type="text" id="wb-search-fields" class="form-control form-control-sm"
                    autocomplete="off" spellcheck="false"
-                   placeholder="-- ワークブックを検索・選択 --">
+                   placeholder="-- ワークブックを検索・選択 --"
+                   style="padding-right:1.6rem">
+            <button id="wb-clear-btn" type="button" tabindex="-1"
+                    style="display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);
+                           background:none;border:none;padding:0 2px;line-height:1;cursor:pointer;
+                           color:var(--text-muted);font-size:.85rem"
+                    onclick="_clearWbSearch()"
+                    aria-label="クリア">&#x2715;</button>
             <input type="hidden" id="wb-select-fields" value="">
             <ul id="wb-dropdown-list" class="list-unstyled position-absolute w-100 mb-0 py-1"
                 style="z-index:1055;max-height:280px;overflow-y:auto;display:none;top:100%;left:0;
@@ -2282,6 +2289,26 @@ function _renderWbDropItems(query) {
   }
 }
 
+function _updateWbClearBtn() {
+  const inp = document.getElementById('wb-search-fields');
+  const btn = document.getElementById('wb-clear-btn');
+  if (btn) btn.style.display = inp && inp.value ? 'block' : 'none';
+}
+
+function _clearWbSearch() {
+  const inp = document.getElementById('wb-search-fields');
+  const hid = document.getElementById('wb-select-fields');
+  const ul  = document.getElementById('wb-dropdown-list');
+  if (inp) inp.value = '';
+  if (hid) hid.value = '';
+  if (ul)  ul.style.display = 'none';
+  _updateWbClearBtn();
+  // 分析結果も非表示にする
+  document.getElementById('fields-result').style.display = 'none';
+  document.getElementById('fields-empty').style.display  = 'none';
+  document.getElementById('fields-loading').style.display = 'none';
+}
+
 function _selectWbItem(id, label) {
   const inp = document.getElementById('wb-search-fields');
   const hid = document.getElementById('wb-select-fields');
@@ -2289,6 +2316,7 @@ function _selectWbItem(id, label) {
   if (inp) inp.value = label;
   if (hid) hid.value = id;
   if (ul)  ul.style.display = 'none';
+  _updateWbClearBtn();
 }
 
 (function _initWbSearch() {
@@ -2308,6 +2336,7 @@ function _selectWbItem(id, label) {
       if (hidVal) hidVal.value = ''; // 入力中は選択状態をクリア
       _renderWbDropItems(inp.value);
       ul.style.display = 'block';
+      _updateWbClearBtn();
     });
     ul.addEventListener('mousedown', e => {
       const item = e.target.closest('.wb-drop-item');
