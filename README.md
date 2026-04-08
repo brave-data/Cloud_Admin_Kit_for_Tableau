@@ -23,12 +23,19 @@ Tableau Cloud's admin screens are spread across multiple pages. Answering questi
 
 ![Dashboard Overview](docs/screenshots/01_dashboard.png)
 
-Open the app and instantly see the state of your entire site.
+Open the app and instantly see the state of your entire site across two rows of summary cards.
 
-- **Workbook / Data Source / View / User / Prep Flow** counts as summary cards
-- **Not Viewed 180+ Days** — identify content candidates for cleanup
-- **Inactive 90+ Days** — spot users for license optimization
-- Click any card to jump directly to the filtered list tab
+**Top row — site totals:**
+- **Workbooks / Prep Flows / Data Sources / Views / Users**
+
+**Bottom row — alert cards (counts update instantly when thresholds change):**
+- **Not Viewed N+ Days** — content candidates for cleanup
+- **Inactive N+ Days** — users for license optimization
+- **DS Not Updated N+ Days** — data sources whose extracts may be stale
+- **Unreferenced Data Sources** — published data sources used by no workbook
+- **⚙ Set Thresholds** — customize the N-day alert thresholds per-person, saved to browser storage
+
+Click any card to jump directly to the relevant list tab.
 
 ---
 
@@ -39,6 +46,7 @@ Open the app and instantly see the state of your entire site.
 The Data Sources tab shows each source's **project, owner, type, certification status, and days since last update** in one sortable table.
 
 - Red-highlighted stale data sources are instantly visible
+- **Unreferenced** badge flags any data source that no workbook currently connects to — a clear cleanup candidate
 - Expand any row to see which workbooks reference that data source
 - Certification status managed in a single column for audit purposes
 
@@ -92,7 +100,21 @@ Download and analyze a workbook's calculated fields, visualized as a Sankey depe
 
 ---
 
-### 7. Dark Mode & Bilingual UI
+### 7. Configurable Alert Thresholds
+
+Click the **⚙ Set Thresholds** card (bottom-right of the dashboard) to customize the alert day counts:
+
+| Alert card | Default | What it counts |
+|---|---|---|
+| Not Viewed | 180 days | Workbooks with no view activity beyond the threshold |
+| Inactive users | 90 days | Users who haven't logged in beyond the threshold |
+| DS Not Updated | 30 days | Data sources whose last-updated date exceeds the threshold |
+
+Thresholds are saved per-browser in `localStorage` and take effect immediately — no server restart needed.
+
+---
+
+### 8. Dark Mode & Bilingual UI
 
 ![Dark Mode](docs/screenshots/07_dark_mode.png)
 
@@ -133,14 +155,15 @@ Swagger UI is available at `http://localhost:8000/docs` while the app is running
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/status` | Fetch status and last updated timestamp |
+| `GET /api/status` | Fetch status, last updated timestamp, and any partial-fetch warnings |
 | `GET /api/summary` | Site-wide summary statistics |
 | `GET /api/workbooks` | Workbook list |
-| `GET /api/datasources` | Data source list |
+| `GET /api/datasources` | Data source list (includes `is_ghost` flag) |
 | `GET /api/views` | View list with usage counts |
 | `GET /api/users` | User list |
 | `GET /api/flows` | Prep flow list |
 | `GET /api/schedules` | Refresh schedule list |
+| `GET /api/flows/{id}/connections` | Input/output connections for a Prep flow |
 | `GET /api/workbooks/{id}/fields` | Calculated field analysis for a workbook |
 | `GET /api/ktw-fields` | Calculated fields for all KTW-tagged workbooks (up to 10) |
 | `POST /api/refresh` | Trigger data re-fetch from Tableau Cloud |
@@ -153,7 +176,7 @@ Swagger UI is available at `http://localhost:8000/docs` while the app is running
 Tableau_Cloud_Manager/
 ├── main.py                  # FastAPI server (entry point)
 ├── tableau_client.py        # Tableau Cloud REST API client
-├── content_audit.py         # Manual Tableau content health report (stale WBs, inactive users)
+├── content_audit.py         # Standalone content health report script
 ├── requirements.txt         # Python dependencies
 ├── .env.example             # Environment variable template
 ├── .gitignore               # Excludes .env and venv from Git
@@ -170,7 +193,6 @@ Tableau_Cloud_Manager/
 
 ## Tech Stack
 
-- **Backend**: Python 3.10+, FastAPI, uvicorn, tableauserverclient
+- **Backend**: Python 3.11+, FastAPI, uvicorn, tableauserverclient
 - **Frontend**: Bootstrap 5.3, Bootstrap Icons, DataTables 1.13, D3.js (Sankey)
-- **Data persistence**: Browser `localStorage` for diff snapshots
-- **Scheduling**: Claude Code scheduled tasks (biweekly maintenance)
+- **Data persistence**: Browser `localStorage` for diff snapshots and alert thresholds
