@@ -2405,6 +2405,12 @@ function renderFieldTable(fields) {
   const dsNames  = [...new Set(fields.map(f => f.datasource))];
   const dsColors = Object.fromEntries(dsNames.map((n, i) => [n, DS_PALETTE[i % DS_PALETTE.length]]));
 
+  // DataTables の destroy() は tbody を初回キャッシュ状態に戻すため、
+  // destroy() を先に呼んでから innerHTML を上書きする必要がある
+  if ($.fn.DataTable.isDataTable('#tbl-fields')) {
+    $('#tbl-fields').DataTable().destroy();
+  }
+
   const tbody = document.getElementById('body-fields');
   tbody.innerHTML = fields.map(f => {
     const color   = dsColors[f.datasource] || '#aaa';
