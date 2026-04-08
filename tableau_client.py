@@ -169,9 +169,10 @@ def fetch_all() -> dict[str, Any]:
                 "description":  ds.description or "",
             })
 
-        # ── ゴーストデータソース検出 ─────────────────────────
+        # ── ゴーストデータソース検出 & 参照数カウント ─────────────
         # 公開済みデータソースのうち、どのワークブックからも参照されていないものを特定
         ghost_ds_ids: set[str] = {ds.id for ds in datasources_raw}
+        ds_ref_count: dict[str, int] = {}   # datasource_id → 参照ワークブック数
         try:
             for wb in workbooks_raw:
                 try:
@@ -180,12 +181,14 @@ def fetch_all() -> dict[str, Any]:
                         ds_id = getattr(conn, "datasource_id", None)
                         if ds_id:
                             ghost_ds_ids.discard(ds_id)
+                            ds_ref_count[ds_id] = ds_ref_count.get(ds_id, 0) + 1
                 except Exception:
                     pass
         except Exception as exc:
             logger.warning("ゴーストデータソース検出に失敗しました: %s", exc)
             fetch_warnings.append(_classify_error(exc, "ゴーストデータソース検出"))
             ghost_ds_ids = set()
+            ds_ref_count = {}
 
         # ── ビュー (使用状況付き) ───────────────────────────
         # TSC 0.30+ では usage=True を views.get() に直接渡す必要がある
@@ -366,9 +369,10 @@ def fetch_all() -> dict[str, Any]:
 
         failed_jobs = [j for j in jobs if j["status"] == "Failed"]
 
-        # is_ghost フラグを各データソースに付与（フロントエンドでのバッジ表示用）
+        # is_ghost フラグ・参照数を各データソースに付与
         for ds in datasources:
-            ds["is_ghost"] = ds["id"] in ghost_ds_ids
+            ds["is_ghost"]        = ds["id"] in ghost_ds_ids
+            ds["reference_count"] = ds_ref_count.get(ds["id"], 0)
 
         ghost_datasources = [ds for ds in datasources if ds["is_ghost"]]
 

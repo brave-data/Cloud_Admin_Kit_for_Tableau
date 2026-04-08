@@ -497,7 +497,7 @@
       <div id="scard-stale-ds" class="stat-card card-warn card p-3 h-100" onclick="switchToSection('ds')" title="クリックしてデータソース一覧を表示">
         <div class="icon" style="color:#EC4B4B"><i class="bi bi-arrow-clockwise"></i></div>
         <div class="value" style="color:#EC4B4B" id="s-stale-ds">—</div>
-        <div class="label" id="lbl-stale-ds-card">30日以上未更新DS</div>
+        <div class="label" id="lbl-stale-ds-card">30日以上未更新データソース</div>
         <div class="click-hint"><i class="bi bi-chevron-right"></i></div>
       </div>
     </div>
@@ -589,7 +589,7 @@
           <table id="tbl-ds" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_ds_name">データソース名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
-              <th data-i18n="th_type">タイプ</th><th data-i18n="th_certified">認定</th><th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th>
+              <th data-i18n="th_type">タイプ</th><th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_ref_count">参照数</th>
             </tr></thead>
             <tbody id="body-ds"></tbody>
           </table>
@@ -967,7 +967,7 @@ const I18N = {
     lbl_stale: '180日以上未閲覧', lbl_inactive: '90日以上未ログイン',
     lbl_ghost_ds: '未参照データソース',
     lbl_threshold_settings: '閾値を設定',
-    th_label_stale: '未閲覧アラート（日）', th_label_inactive: '未ログインアラート（日）', th_label_stale_ds: '未更新DSアラート（日）',
+    th_label_stale: '未閲覧アラート（日）', th_label_inactive: '未ログインアラート（日）', th_label_stale_ds: '未更新データソースアラート（日）',
     btn_save: '保存', btn_reset: 'リセット',
     nav_schedules: 'スケジュール管理', nav_topviews: 'Top ビュー', nav_fields: '計算フィールド分析',
     fields_list: '計算フィールド一覧', fields_sankey: 'フィールド依存関係図',
@@ -980,7 +980,7 @@ const I18N = {
     th_wb_name: 'ワークブック名', th_project: 'プロジェクト', th_owner: 'オーナー',
     th_last_updated: '最終更新', th_days_unviewed: '未閲覧日数',
     th_size: 'サイズ (MB)', th_tags: 'タグ', th_link: 'リンク',
-    th_ds_name: 'データソース名', th_type: 'タイプ', th_certified: '認定',
+    th_ds_name: 'データソース名', th_type: 'タイプ', th_ref_count: '参照数',
     th_days_stale: '経過日数',
     th_view_name: 'ビュー名', th_workbook: 'ワークブック',
     th_total_views: '累計ビュー数', th_last_viewed: '最終閲覧日',
@@ -1028,7 +1028,7 @@ const I18N = {
     idle_hint: '右上の「↻ 更新」を押してTableau Cloudからデータを取得してください。',
     // DS detail panel
     ds_info_title: 'データソース情報',
-    ds_info_type: 'タイプ', ds_info_certified: '認定',
+    ds_info_type: 'タイプ', ds_info_ref_count: '参照数',
     ds_info_project: 'プロジェクト', ds_info_owner: 'オーナー',
     ds_info_last_updated: '最終更新',
     ds_connected_wbs: '接続ワークブック',
@@ -1050,7 +1050,7 @@ const I18N = {
     lbl_stale: 'Not Viewed 180+ Days', lbl_inactive: 'Inactive 90+ Days',
     lbl_ghost_ds: 'Unreferenced Data Sources',
     lbl_threshold_settings: 'Set Thresholds',
-    th_label_stale: 'Unviewed Alert (days)', th_label_inactive: 'Inactive Alert (days)', th_label_stale_ds: 'Stale DS Alert (days)',
+    th_label_stale: 'Unviewed Alert (days)', th_label_inactive: 'Inactive Alert (days)', th_label_stale_ds: 'Stale Datasource Alert (days)',
     btn_save: 'Save', btn_reset: 'Reset',
     nav_schedules: 'Schedules', nav_topviews: 'Top Views', nav_fields: 'Calculated Fields',
     fields_list: 'Calculated Field List', fields_sankey: 'Field Dependency Diagram',
@@ -1063,7 +1063,7 @@ const I18N = {
     th_wb_name: 'Workbook', th_project: 'Project', th_owner: 'Owner',
     th_last_updated: 'Last Updated', th_days_unviewed: 'Days Unviewed',
     th_size: 'Size (MB)', th_tags: 'Tags', th_link: 'Link',
-    th_ds_name: 'Data Source', th_type: 'Type', th_certified: 'Certified',
+    th_ds_name: 'Data Source', th_type: 'Type', th_ref_count: 'References',
     th_days_stale: 'Days Stale',
     th_view_name: 'View Name', th_workbook: 'Workbook',
     th_total_views: 'Total Views', th_last_viewed: 'Last Viewed',
@@ -1111,7 +1111,7 @@ const I18N = {
     idle_hint: 'Click ↻ Refresh to fetch data from Tableau Cloud.',
     // DS detail panel
     ds_info_title: 'Data Source Info',
-    ds_info_type: 'Type', ds_info_certified: 'Certified',
+    ds_info_type: 'Type', ds_info_ref_count: 'References',
     ds_info_project: 'Project', ds_info_owner: 'Owner',
     ds_info_last_updated: 'Last Updated',
     ds_connected_wbs: 'Connected Workbooks',
@@ -1276,7 +1276,7 @@ function rotateSnapshot(data) {
     const snap = {
       ts: Date.now(),
       wb:    data.wb.map(r    => ({ id: r.id, name: r.name, project: r.project, owner: r.owner })),
-      ds:    data.ds.map(r    => ({ id: r.id, name: r.name, project: r.project, owner: r.owner, certified: r.certified })),
+      ds:    data.ds.map(r    => ({ id: r.id, name: r.name, project: r.project, owner: r.owner })),
       flows: data.flows.map(r => ({ id: r.id, name: r.name, project: r.project, owner: r.owner })),
       users: data.users.map(r => ({ id: r.id, name: r.name, email: r.email, site_role: r.site_role })),
       views: data.views.map(r => ({ id: r.id, name: r.name, workbook_id: r.workbook_id, workbook_name: r.workbook_name || '' })),
@@ -1367,7 +1367,7 @@ function renderDiffTab(snap) {
 
   // 差分計算
   const wbDiff   = computeDiff(d.wb,    snap.wb    || [], ['name','project','owner']);
-  const dsDiff   = computeDiff(d.ds,    snap.ds    || [], ['name','project','owner','certified']);
+  const dsDiff   = computeDiff(d.ds,    snap.ds    || [], ['name','project','owner']);
   const flDiff   = computeDiff(d.flows, snap.flows || [], ['name','project','owner']);
   const usrDiff  = computeDiff(d.users, snap.users || [], ['name','email','site_role']);
   const viewDiff = computeDiff(d.views, snap.views || [], ['name']);
@@ -1794,7 +1794,7 @@ function _updateThresholdLabels(th) {
   const isEn = (window._lang === 'en');
   document.getElementById('lbl-stale-card').textContent    = isEn ? `Not Viewed ${th.stale_days}+ Days`       : `${th.stale_days}日以上未閲覧`;
   document.getElementById('lbl-inactive-card').textContent = isEn ? `Inactive ${th.inactive_days}+ Days`      : `${th.inactive_days}日以上未ログイン`;
-  document.getElementById('lbl-stale-ds-card').textContent = isEn ? `DS Not Updated ${th.stale_ds_days}+ Days`: `${th.stale_ds_days}日以上未更新DS`;
+  document.getElementById('lbl-stale-ds-card').textContent = isEn ? `Not Updated ${th.stale_ds_days}+ Days` : `${th.stale_ds_days}日以上未更新データソース`;
 }
 
 function _initThresholdPanel() {
@@ -1943,21 +1943,22 @@ function renderDatasources(rows) {
 
   const tbody = document.getElementById('body-ds');
   tbody.innerHTML = rows.map(r => {
-    const ghostFlag = r.is_ghost
-      ? `<span class="badge ms-1" style="background:#fde8e8;color:#b71c1c;font-size:.72em"><i class="bi bi-database-x me-1"></i>${window._lang === 'en' ? 'Unreferenced' : '未参照'}</span>`
-      : '';
+    const cnt = r.reference_count ?? 0;
+    const refCell = cnt === 0
+      ? `<span class="badge badge-stale"><i class="bi bi-database-x me-1"></i>${window._lang === 'en' ? 'Unreferenced' : '未参照'}</span>`
+      : `<span class="badge badge-fresh">${cnt}${window._lang === 'en' ? '' : '件'}</span>`;
     return `<tr class="wb-data-row" data-ds-id="${esc(r.id)}">
     <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}</td>
     <td>${esc(r.project)}</td>
     <td>${esc(r.owner)}</td>
     <td>${esc(r.type)}</td>
-    <td>${certBadge(r.certified)}</td>
     <td data-order="${esc(r.updated_at || '')}">${fmtDate(r.updated_at)}</td>
-    <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}${ghostFlag}</td>
+    <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}</td>
+    <td data-order="${cnt}">${refCell}</td>
   </tr>`;
   }).join('');
 
-  _dsDt = initTable('tbl-ds', [[5, 'desc']]);
+  _dsDt = initTable('tbl-ds', [[4, 'desc']]);
 
   // Row click → expand inline detail panel
   $('#tbl-ds tbody').off('click.ds').on('click.ds', 'tr.wb-data-row', function () {
@@ -2000,9 +2001,6 @@ function buildDsDetailHTML(dsId) {
       }).join('')
     : `<span class="text-muted small">${tl.ds_info_project} ${esc(ds.project || '—')} — no workbooks</span>`;
 
-  const certRow = ds.cert_note
-    ? `<tr><th class="text-muted fw-normal py-0 pe-2" style="white-space:nowrap">${tl.ds_info_certified}</th><td class="py-0"><small>${esc(ds.cert_note)}</small></td></tr>`
-    : '';
   const descRow = ds.description
     ? `<tr><th class="text-muted fw-normal py-0 pe-2">説明</th><td class="py-0"><small class="text-muted">${esc(ds.description)}</small></td></tr>`
     : '';
@@ -2017,11 +2015,11 @@ function buildDsDetailHTML(dsId) {
         </div>
         <table class="table table-sm mb-0" style="font-size:0.8rem;border-color:#e9ecef">
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_type}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.type || '—')}</td></tr>
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_certified}</th><td class="py-1" style="border-bottom-color:#e9ecef">${certBadge(ds.certified)}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_project}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.project || '—')}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_owner}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.owner || '—')}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_last_updated}</th><td class="py-1" style="border-bottom-color:#e9ecef">${fmtDate(ds.updated_at)}</td></tr>
-          ${certRow}${descRow}
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_ref_count}</th><td class="py-1" style="border-bottom-color:#e9ecef">${ds.reference_count ?? 0}${window._lang === 'en' ? '' : '件'}</td></tr>
+          ${descRow}
         </table>
       </div>
 
