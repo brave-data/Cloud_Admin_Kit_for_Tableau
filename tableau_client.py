@@ -74,6 +74,14 @@ def _days_ago(dt: datetime | None) -> int | None:
     return (datetime.now(timezone.utc) - _ensure_utc(dt)).days
 
 
+def _tableau_url(server_url: str, site_name: str, resource_type: str, resource_id: str) -> str:
+    """Tableau Cloud の Web UI URL を構築する"""
+    base = server_url.rstrip("/")
+    if site_name:
+        return f"{base}/#/site/{site_name}/{resource_type}/{resource_id}"
+    return f"{base}/#/{resource_type}/{resource_id}"
+
+
 # ---------------------------------------------------------------------------
 # メインフェッチ関数
 # ---------------------------------------------------------------------------
@@ -82,6 +90,8 @@ def fetch_all() -> dict[str, Any]:
     """Tableau Cloud から全管理情報を取得して辞書で返す"""
     server, auth = _make_server()
     fetch_warnings: list[dict[str, str]] = []
+    _server_url = os.environ.get("TABLEAU_SERVER_URL", "").rstrip("/")
+    _site_name  = os.environ.get("TABLEAU_SITE_NAME", "")
 
     with server.auth.sign_in(auth):
 
@@ -105,6 +115,7 @@ def fetch_all() -> dict[str, Any]:
                 "site_role":  u.site_role or "",
                 "last_login": _fmt(u.last_login),
                 "days_since_login": _days_ago(u.last_login),
+                "url":        _tableau_url(_server_url, _site_name, "users", u.id),
             })
 
         # ── プロジェクト ─────────────────────────────────────
@@ -171,12 +182,22 @@ def fetch_all() -> dict[str, Any]:
                 "updated_at":   _fmt(ds.updated_at),
                 "days_stale":   _days_ago(ds.updated_at),
                 "description":  ds.description or "",
+                "url":          _tableau_url(_server_url, _site_name, "datasources", ds.id),
             })
 
+        # ── Prep フロー（先行取得: ゴーストDS検出で使用）──────────────
+        flows_raw: list = []
+        try:
+            flows_raw = list(TSC.Pager(server.flows))
+        except Exception as exc:
+            logger.warning("Prepフロー一覧の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "Prepフロー一覧"))
+
         # ── ゴーストデータソース検出 & 参照数カウント ─────────────
-        # 公開済みデータソースのうち、どのワークブックからも参照されていないものを特定
+        # WBとPrepフローのどちらからも参照されていないデータソースを検出
         ghost_ds_ids: set[str] = {ds.id for ds in datasources_raw}
-        ds_ref_count: dict[str, int] = {}   # datasource_id → 参照ワークブック数
+        wb_ref_count:   dict[str, int] = {}   # datasource_id → 参照ワークブック数
+        flow_ref_count: dict[str, int] = {}   # datasource_id → 参照Prepフロー数
         try:
             for wb in workbooks_raw:
                 try:
@@ -185,14 +206,27 @@ def fetch_all() -> dict[str, Any]:
                         ds_id = getattr(conn, "datasource_id", None)
                         if ds_id:
                             ghost_ds_ids.discard(ds_id)
-                            ds_ref_count[ds_id] = ds_ref_count.get(ds_id, 0) + 1
+                            wb_ref_count[ds_id] = wb_ref_count.get(ds_id, 0) + 1
                 except Exception:
                     pass
         except Exception as exc:
-            logger.warning("ゴーストデータソース検出に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "ゴーストデータソース検出"))
-            ghost_ds_ids = set()
-            ds_ref_count = {}
+            logger.warning("ワークブック接続情報の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "ワークブック接続情報"))
+
+        try:
+            for fl in flows_raw:
+                try:
+                    server.flows.populate_connections(fl)
+                    for conn in (fl.connections or []):
+                        ds_id = getattr(conn, "datasource_id", None)
+                        if ds_id:
+                            ghost_ds_ids.discard(ds_id)
+                            flow_ref_count[ds_id] = flow_ref_count.get(ds_id, 0) + 1
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.warning("Prepフロー接続情報の取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "Prepフロー接続情報"))
 
         # ── ビュー (使用状況付き) ───────────────────────────
         # TSC 0.30+ では usage=True を views.get() に直接渡す必要がある
@@ -216,6 +250,7 @@ def fetch_all() -> dict[str, Any]:
             days_since_viewed = (_days_ago(last_viewed)
                                  if isinstance(last_viewed, datetime)
                                  else _days_ago(v.updated_at))
+            _view_content_url = getattr(v, "content_url", "") or ""
             views.append({
                 "id":               v.id,
                 "name":             v.name,
@@ -227,6 +262,7 @@ def fetch_all() -> dict[str, Any]:
                 "days_stale":       _days_ago(v.updated_at),
                 "last_viewed_at":   _fmt(last_viewed) if isinstance(last_viewed, datetime) else None,
                 "days_since_viewed": days_since_viewed,
+                "url":              _tableau_url(_server_url, _site_name, "views", _view_content_url) if _view_content_url else "",
             })
 
         # ワークブック名をビューに付与
@@ -255,11 +291,35 @@ def fetch_all() -> dict[str, Any]:
                 "notes":        (getattr(j, "notes", "") or "")[:300],
             })
 
-        # ── 抽出スケジュール ──────────────────────────────────
+        # ── スケジュール（抽出更新 + サブスクリプション）──────────────
         schedules = []
+
+        # スケジュールマスタを事前取得（task.schedule が None のときのフォールバック）
+        _sched_map: dict[str, Any] = {}
         try:
-            tasks_raw = list(TSC.Pager(server.tasks))
-            for task in tasks_raw:
+            for _s in TSC.Pager(server.schedules):
+                _sched_map[_s.id] = _s
+        except Exception:
+            pass  # Tableau Cloud では schedules エンドポイントが使えない場合がある
+
+        def _extract_schedule_info(obj: Any) -> tuple[str, str | None]:
+            """schedule 属性または schedule_id から (frequency, next_run_at) を返す"""
+            sched = getattr(obj, "schedule", None)
+            if sched is None:
+                sched_id = getattr(obj, "schedule_id", None)
+                if sched_id:
+                    sched = _sched_map.get(sched_id)
+            if sched is None:
+                return "", None
+            frequency = getattr(sched, "frequency", "") or ""
+            next_raw  = getattr(sched, "next_run_at", None)
+            if isinstance(next_raw, datetime):
+                return frequency, _fmt(next_raw)
+            return frequency, (str(next_raw) if next_raw else None)
+
+        # 1) 抽出更新タスク
+        try:
+            for task in TSC.Pager(server.tasks):
                 content_name = ""
                 content_type = ""
                 project_name = ""
@@ -285,41 +345,51 @@ def fetch_all() -> dict[str, Any]:
                             owner_name   = user_map.get(wb.owner_id, "Unknown")
                             break
 
-                # スケジュール頻度・次回実行時刻
-                frequency   = ""
-                next_run_at = None
-                schedule_obj = getattr(task, "schedule", None)
-                if schedule_obj:
-                    frequency = getattr(schedule_obj, "frequency", "") or ""
-                    next_raw  = getattr(schedule_obj, "next_run_at", None)
-                    if isinstance(next_raw, datetime):
-                        next_run_at = _fmt(next_raw)
-                    elif next_raw:
-                        next_run_at = str(next_raw)
-
+                frequency, next_run_at = _extract_schedule_info(task)
                 schedules.append({
-                    "id":           task.id,
-                    "content_name": content_name,
-                    "content_type": content_type,
-                    "project":      project_name,
-                    "owner":        owner_name,
-                    "refresh_type": getattr(task, "extract_refresh_type", "") or "",
-                    "frequency":    frequency,
-                    "next_run_at":  next_run_at,
+                    "id":            task.id,
+                    "schedule_kind": "extract",
+                    "content_name":  content_name,
+                    "content_type":  content_type,
+                    "project":       project_name,
+                    "owner":         owner_name,
+                    "refresh_type":  getattr(task, "extract_refresh_type", "") or "",
+                    "frequency":     frequency,
+                    "next_run_at":   next_run_at,
                 })
         except Exception as exc:
             logger.warning("抽出スケジュールの取得に失敗しました: %s", exc)
             fetch_warnings.append(_classify_error(exc, "抽出スケジュール"))
-            schedules = []
 
-        # ── Prep フロー ──────────────────────────────────────
-        flows_raw = []
+        # 2) サブスクリプション
         try:
-            flows_raw = list(TSC.Pager(server.flows))
+            for sub in TSC.Pager(server.subscriptions):
+                content      = getattr(sub, "content", None)
+                content_name = getattr(content, "name", "") or "" if content else ""
+                content_type = (getattr(content, "type", "") or "").lower()
+                user_obj     = getattr(sub, "user", None)
+                owner_name   = ""
+                if user_obj:
+                    uid = getattr(user_obj, "id", None)
+                    owner_name = user_map.get(uid, getattr(user_obj, "name", "") or "")
+                frequency, next_run_at = _extract_schedule_info(sub)
+                schedules.append({
+                    "id":            sub.id,
+                    "schedule_kind": "subscription",
+                    "content_name":  content_name,
+                    "content_type":  content_type,
+                    "project":       "",
+                    "owner":         owner_name,
+                    "refresh_type":  "",
+                    "frequency":     frequency,
+                    "next_run_at":   next_run_at,
+                    "subject":       getattr(sub, "subject", "") or "",
+                })
         except Exception as exc:
-            logger.warning("Prepフロー一覧の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "Prepフロー一覧"))
+            logger.warning("サブスクリプションの取得に失敗しました: %s", exc)
+            fetch_warnings.append(_classify_error(exc, "サブスクリプション"))
 
+        # ── Prep フロー（flows_raw は上部で先行取得済み）────────────
         # フロー実行履歴（最新1ページ分）でフローIDごとの最終実行日を取得
         flow_run_map: dict[str, object] = {}
         try:
@@ -353,6 +423,7 @@ def fetch_all() -> dict[str, Any]:
                 "days_since_run": _days_ago(last_run),
                 "description":   fl.description or "",
                 "tags":          sorted(fl.tags) if fl.tags else [],
+                "url":           _tableau_url(_server_url, _site_name, "flows", fl.id),
             })
 
         # ── サマリ ───────────────────────────────────────────
@@ -373,10 +444,12 @@ def fetch_all() -> dict[str, Any]:
 
         failed_jobs = [j for j in jobs if j["status"] == "Failed"]
 
-        # is_ghost フラグ・参照数を各データソースに付与
+        # is_ghost フラグ・参照数（WB + Prepフロー別）を各データソースに付与
         for ds in datasources:
-            ds["is_ghost"]        = ds["id"] in ghost_ds_ids
-            ds["reference_count"] = ds_ref_count.get(ds["id"], 0)
+            ds["wb_ref_count"]    = wb_ref_count.get(ds["id"], 0)
+            ds["flow_ref_count"]  = flow_ref_count.get(ds["id"], 0)
+            ds["reference_count"] = ds["wb_ref_count"] + ds["flow_ref_count"]
+            ds["is_ghost"]        = ds["reference_count"] == 0
 
         ghost_datasources = [ds for ds in datasources if ds["is_ghost"]]
 

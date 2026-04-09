@@ -108,7 +108,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Cloud Admin Kit for Tableau",
     description="Tableau Cloud の管理情報をブラウザで確認・更新するローカルツール",
-    version="1.3.2",
+    version="1.4.0",
     lifespan=lifespan,
 )
 

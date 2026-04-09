@@ -589,7 +589,7 @@
           <table id="tbl-ds" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_ds_name">データソース名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
-              <th data-i18n="th_type">タイプ</th><th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_ref_count">参照数</th>
+              <th data-i18n="th_type">タイプ</th><th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_ref_count">参照数</th><th data-i18n="th_link">リンク</th>
             </tr></thead>
             <tbody id="body-ds"></tbody>
           </table>
@@ -605,7 +605,7 @@
           <table id="tbl-views" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_view_name">ビュー名</th><th data-i18n="th_workbook">ワークブック</th><th data-i18n="th_owner">オーナー</th>
-              <th data-i18n="th_total_views">累計ビュー数</th><th data-i18n="th_last_viewed">最終閲覧日</th><th data-i18n="th_days_stale">経過日数</th>
+              <th data-i18n="th_total_views">累計ビュー数</th><th data-i18n="th_last_viewed">最終閲覧日</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_link">リンク</th>
             </tr></thead>
             <tbody id="body-views"></tbody>
           </table>
@@ -621,7 +621,7 @@
           <table id="tbl-users" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_name">名前</th><th data-i18n="th_email">メール</th><th data-i18n="th_license">ライセンス</th>
-              <th data-i18n="th_last_login">最終ログイン</th><th data-i18n="th_days_inactive">未ログイン日数</th>
+              <th data-i18n="th_last_login">最終ログイン</th><th data-i18n="th_days_inactive">未ログイン日数</th><th data-i18n="th_link">リンク</th>
             </tr></thead>
             <tbody id="body-users"></tbody>
           </table>
@@ -637,7 +637,7 @@
           <table id="tbl-flows" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_flow_name">フロー名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
-              <th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_last_run">最終実行日</th><th data-i18n="th_tags">タグ</th>
+              <th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_last_run">最終実行日</th><th data-i18n="th_tags">タグ</th><th data-i18n="th_link">リンク</th>
             </tr></thead>
             <tbody id="body-flows"></tbody>
           </table>
@@ -1023,6 +1023,8 @@ const I18N = {
     // refresh type badges
     badge_full_refresh: '完全更新',
     badge_incremental: '差分更新',
+    badge_subscription: 'サブスクリプション',
+    th_link: 'リンク',
     // poll status
     fetched_label: '最終更新: ',
     idle_hint: '右上の「↻ 更新」を押してTableau Cloudからデータを取得してください。',
@@ -1106,6 +1108,8 @@ const I18N = {
     // refresh type badges
     badge_full_refresh: 'Full Refresh',
     badge_incremental: 'Incremental',
+    badge_subscription: 'Subscription',
+    th_link: 'Link',
     // poll status
     fetched_label: 'Last updated: ',
     idle_hint: 'Click ↻ Refresh to fetch data from Tableau Cloud.',
@@ -1943,10 +1947,23 @@ function renderDatasources(rows) {
 
   const tbody = document.getElementById('body-ds');
   tbody.innerHTML = rows.map(r => {
-    const cnt = r.reference_count ?? 0;
-    const refCell = cnt === 0
-      ? `<span class="badge badge-stale"><i class="bi bi-database-x me-1"></i>${window._lang === 'en' ? 'Unreferenced' : '未参照'}</span>`
-      : `<span class="badge badge-fresh">${cnt}${window._lang === 'en' ? '' : '件'}</span>`;
+    const cnt      = r.reference_count ?? 0;
+    const wbCnt    = r.wb_ref_count    ?? 0;
+    const flowCnt  = r.flow_ref_count  ?? 0;
+    let refCell;
+    if (cnt === 0) {
+      refCell = `<span class="badge badge-stale"><i class="bi bi-database-x me-1"></i>${window._lang === 'en' ? 'Unreferenced' : '未参照'}</span>`;
+    } else if (wbCnt > 0 && flowCnt > 0) {
+      refCell = `<span class="badge badge-fresh" title="WB: ${wbCnt} / Prep: ${flowCnt}">WB ${wbCnt} / Prep ${flowCnt}</span>`;
+    } else if (flowCnt > 0) {
+      refCell = `<span class="badge badge-fresh"><i class="bi bi-diagram-3 me-1"></i>Prep ${flowCnt}</span>`;
+    } else {
+      refCell = `<span class="badge badge-fresh">${cnt}${window._lang === 'en' ? '' : '件'}</span>`;
+    }
+    const safeUrl = r.url && r.url.startsWith('https://') ? r.url : '';
+    const link = safeUrl
+      ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1" onclick="event.stopPropagation()"><i class="bi bi-box-arrow-up-right"></i></a>`
+      : '—';
     return `<tr class="wb-data-row" data-ds-id="${esc(r.id)}">
     <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}</td>
     <td>${esc(r.project)}</td>
@@ -1955,6 +1972,7 @@ function renderDatasources(rows) {
     <td data-order="${esc(r.updated_at || '')}">${fmtDate(r.updated_at)}</td>
     <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}</td>
     <td data-order="${cnt}">${refCell}</td>
+    <td>${link}</td>
   </tr>`;
   }).join('');
 
@@ -2018,7 +2036,13 @@ function buildDsDetailHTML(dsId) {
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_project}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.project || '—')}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_owner}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.owner || '—')}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_last_updated}</th><td class="py-1" style="border-bottom-color:#e9ecef">${fmtDate(ds.updated_at)}</td></tr>
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_ref_count}</th><td class="py-1" style="border-bottom-color:#e9ecef">${ds.reference_count ?? 0}${window._lang === 'en' ? '' : '件'}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_ref_count}</th><td class="py-1" style="border-bottom-color:#e9ecef">${(() => {
+            const wbC = ds.wb_ref_count ?? 0; const flC = ds.flow_ref_count ?? 0; const tot = ds.reference_count ?? 0;
+            if (tot === 0) return window._lang === 'en' ? 'Unreferenced' : '未参照';
+            if (wbC > 0 && flC > 0) return `WB ${wbC} / Prep ${flC}`;
+            if (flC > 0) return `Prep ${flC}`;
+            return `${tot}${window._lang === 'en' ? '' : '件'}`;
+          })()}</td></tr>
           ${descRow}
         </table>
       </div>
@@ -2044,6 +2068,10 @@ function renderViews(rows) {
     // last_viewed_at が取れていれば最終閲覧日を、なければ最終更新日を表示
     const viewedAt  = r.last_viewed_at || r.updated_at;
     const viewedDay = r.days_since_viewed ?? r.days_stale ?? 9999;
+    const safeUrl = r.url && r.url.startsWith('https://') ? r.url : '';
+    const link = safeUrl
+      ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1"><i class="bi bi-box-arrow-up-right"></i></a>`
+      : '—';
     return `<tr>
       <td>${esc(r.name)}</td>
       <td>${esc(r.workbook_name || '')}</td>
@@ -2051,6 +2079,7 @@ function renderViews(rows) {
       <td data-order="${r.total_views}"><strong>${r.total_views.toLocaleString()}</strong></td>
       <td data-order="${esc(viewedAt || '')}">${fmtDate(viewedAt)}</td>
       <td data-order="${viewedDay}">${ageBadge(viewedDay, 180)}</td>
+      <td>${link}</td>
     </tr>`;
   }).join('');
   initTable('tbl-views', [[3, 'desc']]);
@@ -2058,13 +2087,20 @@ function renderViews(rows) {
 
 function renderUsers(rows) {
   const tbody = document.getElementById('body-users');
-  tbody.innerHTML = rows.map(r => `<tr>
-    <td>${esc(r.name)}</td>
-    <td>${esc(r.email)}</td>
-    <td><span class="badge bg-dark">${esc(r.site_role)}</span></td>
-    <td data-order="${esc(r.last_login || '')}">${fmtDate(r.last_login)}</td>
-    <td data-order="${r.days_since_login ?? 9999}">${ageBadge(r.days_since_login, 90)}</td>
-  </tr>`).join('');
+  tbody.innerHTML = rows.map(r => {
+    const safeUrl = r.url && r.url.startsWith('https://') ? r.url : '';
+    const link = safeUrl
+      ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1"><i class="bi bi-box-arrow-up-right"></i></a>`
+      : '—';
+    return `<tr>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.email)}</td>
+      <td><span class="badge bg-dark">${esc(r.site_role)}</span></td>
+      <td data-order="${esc(r.last_login || '')}">${fmtDate(r.last_login)}</td>
+      <td data-order="${r.days_since_login ?? 9999}">${ageBadge(r.days_since_login, 90)}</td>
+      <td>${link}</td>
+    </tr>`;
+  }).join('');
   initTable('tbl-users', [[4, 'desc']]);
 }
 
@@ -2087,6 +2123,10 @@ function renderFlows(rows) {
 
   tbody.innerHTML = rows.map(r => {
     const tags = (r.tags || []).map(t => `<span class="badge bg-secondary me-1">${esc(t)}</span>`).join('');
+    const safeUrl = r.url && r.url.startsWith('https://') ? r.url : '';
+    const link = safeUrl
+      ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1" onclick="event.stopPropagation()"><i class="bi bi-box-arrow-up-right"></i></a>`
+      : '—';
     return `<tr class="wb-data-row" data-flow-id="${esc(r.id)}">
       <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}</td>
       <td>${esc(r.project)}</td>
@@ -2095,6 +2135,7 @@ function renderFlows(rows) {
       <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}</td>
       <td data-order="${esc(r.last_run_at || '')}">${fmtDate(r.last_run_at)}</td>
       <td>${tags || '<span class="text-muted">—</span>'}</td>
+      <td>${link}</td>
     </tr>`;
   }).join('');
 
@@ -2216,17 +2257,28 @@ function renderSchedules(rows) {
     return;
   }
   tbody.innerHTML = rows.map(r => {
+    const _tl = I18N[window._lang || 'ja'];
+    const isSub = r.schedule_kind === 'subscription';
     const typeIcon = r.content_type === 'datasource'
       ? `<i class="bi bi-database-fill me-1" style="color:#4C9AED"></i>`
+      : r.content_type === 'view'
+      ? `<i class="bi bi-eye-fill me-1" style="color:#6c757d"></i>`
       : `<i class="bi bi-journal-richtext me-1" style="color:#2F5B94"></i>`;
-    const _tl = I18N[window._lang || 'ja'];
-    const typeLabel = r.content_type === 'datasource' ? _tl.lbl_ds : _tl.lbl_wb;
+    const typeLabel = r.content_type === 'datasource' ? _tl.lbl_ds
+      : r.content_type === 'view' ? (window._lang === 'en' ? 'View' : 'ビュー')
+      : _tl.lbl_wb;
+    const kindCell = isSub
+      ? `<span class="badge bg-secondary" style="font-size:.72rem">${_tl.badge_subscription}</span>`
+      : refreshTypeBadge(r.refresh_type);
+    const nameCell = isSub && r.subject
+      ? `${esc(r.content_name || '—')}<br><small class="text-muted">${esc(r.subject)}</small>`
+      : esc(r.content_name || '—');
     return `<tr>
-      <td class="fw-semibold">${typeIcon}${esc(r.content_name || '—')}</td>
+      <td class="fw-semibold">${typeIcon}${nameCell}</td>
       <td><small class="text-muted">${typeLabel}</small></td>
       <td>${esc(r.project || '—')}</td>
       <td>${esc(r.owner || '—')}</td>
-      <td>${refreshTypeBadge(r.refresh_type)}</td>
+      <td>${kindCell}</td>
       <td><span class="fw-semibold">${fmtFrequency(r.frequency)}</span></td>
       <td data-order="${esc(r.next_run_at || '')}">${nextRunBadge(r.next_run_at)}</td>
     </tr>`;
