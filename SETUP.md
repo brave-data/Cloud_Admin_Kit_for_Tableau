@@ -22,6 +22,31 @@ cd Cloud_Admin_Kit_for_Tableau
 
 ## Step 2 — Create a virtual environment
 
+First, confirm your Python version:
+
+```bash
+python3 --version
+```
+
+If the output is `Python 3.11.x` or higher, run:
+
+```bash
+# Mac / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+If the output is older than 3.11 (e.g. 3.9), install Python 3.11 first:
+
+- **Mac (Homebrew):** `brew install python@3.11`
+- **Other:** Download from [python.org](https://www.python.org/downloads/)
+
+Then create the venv using the explicit version:
+
 ```bash
 # Mac / Linux
 python3.11 -m venv .venv
@@ -31,8 +56,6 @@ source .venv/bin/activate
 py -3.11 -m venv .venv
 .venv\Scripts\activate
 ```
-
-> **Note:** Make sure to use Python 3.11 explicitly (`python3.11`). Running `python3` may point to an older version (e.g. 3.9) depending on your system, which will cause import errors at runtime.
 
 ---
 

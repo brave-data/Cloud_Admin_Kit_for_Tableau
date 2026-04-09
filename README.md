@@ -127,7 +127,7 @@ Toggle between light and dark mode for comfortable long sessions. Full Japanese 
 ```bash
 git clone https://github.com/brave-data/Cloud_Admin_Kit_for_Tableau.git
 cd Cloud_Admin_Kit_for_Tableau
-python3.11 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # requires Python 3.11+
 pip install -r requirements.txt
 cp .env.example .env   # add your Tableau Cloud credentials
 python main.py

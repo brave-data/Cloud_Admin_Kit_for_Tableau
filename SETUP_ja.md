@@ -22,6 +22,31 @@ cd Cloud_Admin_Kit_for_Tableau
 
 ## ステップ2 — 仮想環境を作成
 
+まず、Pythonのバージョンを確認してください：
+
+```bash
+python3 --version
+```
+
+`Python 3.11.x` 以上が表示された場合：
+
+```bash
+# Mac / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+3.11 未満（例: 3.9）が表示された場合は、先に Python 3.11 をインストールしてください：
+
+- **Mac（Homebrew）：** `brew install python@3.11`
+- **その他：** [python.org](https://www.python.org/downloads/) からダウンロード
+
+インストール後、バージョンを明示して仮想環境を作成します：
+
 ```bash
 # Mac / Linux
 python3.11 -m venv .venv
@@ -31,8 +56,6 @@ source .venv/bin/activate
 py -3.11 -m venv .venv
 .venv\Scripts\activate
 ```
-
-> **注意:** `python3.11` と明示してください。環境によっては `python3` が 3.9 など古いバージョンを指していることがあり、その場合は実行時にエラーが発生します。
 
 ---
 
