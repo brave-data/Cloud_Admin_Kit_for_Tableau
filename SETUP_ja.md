@@ -6,7 +6,7 @@
 
 ## 動作要件
 
-- Python **3.10以上**
+- Python **3.11以上**
 - Tableau CloudサイトのPersonal Access Token（PAT）
 
 ---
@@ -14,8 +14,8 @@
 ## ステップ1 — リポジトリをクローン
 
 ```bash
-git clone https://github.com/brave-data/Tableau_Cloud_Manager.git
-cd Tableau_Cloud_Manager
+git clone https://github.com/brave-data/Cloud_Admin_Kit_for_Tableau.git
+cd Cloud_Admin_Kit_for_Tableau
 ```
 
 ---
@@ -32,7 +32,7 @@ python -m venv .venv
 .venv\Scripts\activate
 ```
 
-> **Python 3.10以上が必要な理由：** `tableauserverclient` ライブラリが `X | Y` 形式の型ユニオン構文を使用しており、Python 3.9以前では無音でインポートに失敗します。
+> **Python 3.11以上が必要な理由：** アプリが `X | Y` 形式の型ユニオン構文など、Python 3.11以上を必要とする機能を使用しています。
 
 ---
 
@@ -108,7 +108,7 @@ python main.py
 
 | 症状 | 原因 | 対処法 |
 |------|------|--------|
-| `ImportError: tableauserverclient` | Pythonバージョンが古い、またはvenvが有効化されていない | `.venv` を有効化し、Python 3.10以上であることを確認 |
+| `ImportError: tableauserverclient` | Pythonバージョンが古い、またはvenvが有効化されていない | `.venv` を有効化し、Python 3.11以上であることを確認 |
 | 更新時に「接続に失敗しました」 | `.env` の認証情報が誤っている | URL・トークン名・シークレットを再確認 |
 | 更新後にローディングが止まらない | バックグラウンドスレッドでエラー発生 | ターミナルのPythonエラー出力を確認 |
 | タブのデータが0件 | そのコンテンツタイプがサイトに存在しない | 正常な状態です |

@@ -6,7 +6,7 @@
 
 ## Requirements
 
-- Python **3.10 or later**
+- Python **3.11 or later**
 - A Tableau Cloud site with a Personal Access Token (PAT)
 
 ---
@@ -14,8 +14,8 @@
 ## Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/brave-data/Tableau_Cloud_Manager.git
-cd Tableau_Cloud_Manager
+git clone https://github.com/brave-data/Cloud_Admin_Kit_for_Tableau.git
+cd Cloud_Admin_Kit_for_Tableau
 ```
 
 ---
@@ -32,7 +32,7 @@ python -m venv .venv
 .venv\Scripts\activate
 ```
 
-> **Why Python 3.10+?** The `tableauserverclient` library uses union-type syntax (`X | Y`) that requires Python 3.10 or higher. Using an older Python will cause a silent import failure.
+> **Why Python 3.11+?** The `tableauserverclient` library uses union-type syntax (`X | Y`) that requires Python 3.11 or higher. Using an older Python will cause a silent import failure.
 
 ---
 
@@ -109,7 +109,7 @@ python main.py
 
 | Symptom | Cause | Solution |
 |---------|-------|----------|
-| `ImportError: tableauserverclient` | Wrong Python version or missing venv | Ensure you activated `.venv` and Python is 3.10+ |
+| `ImportError: tableauserverclient` | Wrong Python version or missing venv | Ensure you activated `.venv` and Python is 3.11+ |
 | "Connection failed" on Refresh | Wrong credentials in `.env` | Double-check URL, token name, and secret |
 | Stuck on loading screen after Refresh | Server-side error in background thread | Check terminal output for Python tracebacks |
 | A tab shows 0 items | No content of that type on your site | Expected — not an error |

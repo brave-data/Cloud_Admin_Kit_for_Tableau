@@ -126,8 +126,8 @@ Tableau Cloud の管理画面は機能ごとに分散しており、「どのデ
 ## クイックスタート
 
 ```bash
-git clone https://github.com/brave-data/Tableau_Cloud_Manager.git
-cd Tableau_Cloud_Manager
+git clone https://github.com/brave-data/Cloud_Admin_Kit_for_Tableau.git
+cd Cloud_Admin_Kit_for_Tableau
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # Tableau Cloudの認証情報を入力
