@@ -1,0 +1,46 @@
+#!/bin/sh
+# ============================================================
+# pre-commit hook: .env.example に実際の認証情報が含まれていないか確認
+#
+# インストール方法:
+#   cp hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+# ============================================================
+
+ENV_EXAMPLE=".env.example"
+
+# ステージングされているファイルの中に .env.example が含まれるか確認
+if ! git diff --cached --name-only | grep -qF "$ENV_EXAMPLE"; then
+  exit 0  # .env.example が変更対象でなければスキップ
+fi
+
+# プレースホルダー以外の値が入っていないかチェック
+FOUND=0
+
+# TABLEAU_TOKEN_NAME: "your-token-name" 以外の実際の値が入っていたらNG
+if git show ":$ENV_EXAMPLE" | grep -E '^TABLEAU_TOKEN_NAME=' | grep -qvE '^TABLEAU_TOKEN_NAME=(your-token-name)?$'; then
+  echo "❌ .env.example に実際の TABLEAU_TOKEN_NAME が含まれています。"
+  FOUND=1
+fi
+
+# TABLEAU_TOKEN_SECRET: "your-token-secret" 以外の実際の値が入っていたらNG
+if git show ":$ENV_EXAMPLE" | grep -E '^TABLEAU_TOKEN_SECRET=' | grep -qvE '^TABLEAU_TOKEN_SECRET=(your-token-secret)?$'; then
+  echo "❌ .env.example に実際の TABLEAU_TOKEN_SECRET が含まれています。"
+  FOUND=1
+fi
+
+# TABLEAU_SERVER_URL: "your-server.online.tableau.com" 以外のサーバー名が入っていたらNG
+if git show ":$ENV_EXAMPLE" | grep -E '^TABLEAU_SERVER_URL=' | grep -qvE '^TABLEAU_SERVER_URL=(https://your-server\.online\.tableau\.com)?$'; then
+  echo "❌ .env.example に実際の TABLEAU_SERVER_URL が含まれています。"
+  FOUND=1
+fi
+
+if [ "$FOUND" -eq 1 ]; then
+  echo ""
+  echo "⚠️  コミットをブロックしました。"
+  echo "   .env.example にはプレースホルダー値のみを記載してください。"
+  echo "   実際の認証情報は .env に書き、Git管理外にしてください。"
+  exit 1
+fi
+
+exit 0

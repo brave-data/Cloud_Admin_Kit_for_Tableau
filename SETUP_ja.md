@@ -117,6 +117,21 @@ python main.py
 
 ---
 
+## オプション: pre-commit フック（認証情報の誤コミット防止）
+
+`hooks/pre-commit` スクリプトを導入すると、`.env.example` に実際の認証情報が含まれている状態でのコミットをブロックできます。PATシークレットの誤公開を防ぐための安全策です。
+
+インストール方法：
+
+```bash
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+フックは `TABLEAU_SERVER_URL`・`TABLEAU_TOKEN_NAME`・`TABLEAU_TOKEN_SECRET` にプレースホルダー以外の値が入っていないかを検査します。実際の値が見つかった場合はコミットがブロックされ、エラーメッセージが表示されます。
+
+---
+
 ## アップデート手順
 
 ```bash

@@ -118,6 +118,21 @@ Once complete, all tabs will populate with data.
 
 ---
 
+## Optional: Pre-commit Hook (Credential Guard)
+
+The `hooks/pre-commit` script blocks any commit where `.env.example` contains real credentials instead of placeholder values. This prevents accidental exposure of your PAT secret.
+
+To install:
+
+```bash
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The hook checks `TABLEAU_SERVER_URL`, `TABLEAU_TOKEN_NAME`, and `TABLEAU_TOKEN_SECRET` for non-placeholder values. If any are found, the commit is blocked with an error message.
+
+---
+
 ## Upgrading
 
 ```bash
