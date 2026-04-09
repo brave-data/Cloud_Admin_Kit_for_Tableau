@@ -27,7 +27,8 @@ _MAIN_WORKERS = 8
 # populate_connections の最大並列数
 _CONN_WORKERS = 8
 # API リクエストのタイムアウト秒数（ハングアップ防止）
-_HTTP_TIMEOUT = 60
+# subscriptions / jobs は大規模サイトで応答が遅いため余裕を持たせる
+_HTTP_TIMEOUT = 120
 
 
 # ---------------------------------------------------------------------------
@@ -214,9 +215,9 @@ def fetch_all() -> dict[str, Any]:
         "datasources":   lambda s: list(TSC.Pager(s.datasources)),
         "flows":         lambda s: list(TSC.Pager(s.flows)),
         "views":         _fetch_views_with_usage,
-        "jobs":          lambda s: list(TSC.Pager(s.jobs, request_opts=TSC.RequestOptions(pagesize=50)))[:200],
+        "jobs":          lambda s: list(TSC.Pager(s.jobs, request_opts=TSC.RequestOptions(pagesize=100)))[:100],
         "tasks":         lambda s: list(TSC.Pager(s.tasks)),
-        "subscriptions": lambda s: list(TSC.Pager(s.subscriptions)),
+        "subscriptions": lambda s: list(TSC.Pager(s.subscriptions, request_opts=TSC.RequestOptions(pagesize=100))),
         "sched_map":     lambda s: {_s.id: _s for _s in TSC.Pager(s.schedules)},
         "flow_runs":     _fetch_flow_runs,
     }
