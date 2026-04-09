@@ -49,7 +49,11 @@ def _make_server() -> tuple[TSC.Server, TSC.PersonalAccessTokenAuth]:
 
     auth   = TSC.PersonalAccessTokenAuth(name, secret, site_id=site)
     server = TSC.Server(url, use_server_version=True)
-    server.add_http_options({"verify": True})
+
+    # REQUESTS_CA_BUNDLE にCA証明書パスが指定されていればそれを使用（社内プロキシ対応）
+    # 未指定の場合は True（デフォルトのCA束で検証）
+    ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", "").strip()
+    server.add_http_options({"verify": ca_bundle if ca_bundle else True})
     return server, auth
 
 
