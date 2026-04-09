@@ -152,4 +152,37 @@ python main.py
 | Stuck on loading screen after Refresh | Server-side error in background thread | Check terminal output for Python tracebacks |
 | A tab shows 0 items | No content of that type on your site | Expected — not an error |
 | Port 8000 already in use | Another process on the port | Add `PORT=8080` to `.env` |
-| SSL certificate error | Corporate proxy / self-signed cert | Set `verify=False` in `tableau_client.py` (dev only) |
+| `SSLError: certificate verify failed` | Corporate proxy replacing SSL certificates | See **SSL / Corporate Proxy** section below |
+
+---
+
+## SSL / Corporate Proxy
+
+If you see `SSLError: certificate verify failed` when hitting the Refresh button, your corporate proxy is likely intercepting SSL traffic and replacing the server certificate with one signed by an internal CA.
+
+**Fix: point the app at your corporate CA certificate**
+
+**Step 1 — Obtain the root CA certificate**
+
+Option A: Export from Chrome (no IT request needed)
+1. Open Tableau Cloud in Chrome.
+2. Click the lock icon in the address bar → **Connection is secure** → **Certificate is valid**.
+3. Go to the **Details** tab → select the **root CA** at the top of the certificate chain.
+4. Click **Export** and save as **PEM format** (e.g. `corporate-ca.pem`).
+
+Option B: Ask your IT helpdesk for the root CA certificate in PEM format (`.pem` or `.crt`).
+
+**Step 2 — Configure the app**
+
+1. Place the file inside the project:
+   ```
+   certs/corporate-ca.pem
+   ```
+   The `certs/` folder is already in `.gitignore`, so the file will never be committed.
+3. Add the following line to your `.env`:
+   ```ini
+   REQUESTS_CA_BUNDLE=certs/corporate-ca.pem
+   ```
+4. Restart the app (`python main.py`) and try Refresh again.
+
+This keeps SSL verification fully enabled — only the CA bundle is swapped out — so it is safe and does not require IT approval beyond obtaining the certificate itself.
