@@ -24,15 +24,15 @@ cd Cloud_Admin_Kit_for_Tableau
 
 ```bash
 # Mac / Linux
-python3 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 
 # Windows
-python -m venv .venv
+py -3.11 -m venv .venv
 .venv\Scripts\activate
 ```
 
-> **Why Python 3.11+?** The `tableauserverclient` library uses union-type syntax (`X | Y`) that requires Python 3.11 or higher. Using an older Python will cause a silent import failure.
+> **Note:** Make sure to use Python 3.11 explicitly (`python3.11`). Running `python3` may point to an older version (e.g. 3.9) depending on your system, which will cause import errors at runtime.
 
 ---
 

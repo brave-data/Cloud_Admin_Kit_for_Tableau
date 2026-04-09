@@ -24,15 +24,15 @@ cd Cloud_Admin_Kit_for_Tableau
 
 ```bash
 # Mac / Linux
-python3 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 
 # Windows
-python -m venv .venv
+py -3.11 -m venv .venv
 .venv\Scripts\activate
 ```
 
-> **Python 3.11以上が必要な理由：** アプリが `X | Y` 形式の型ユニオン構文など、Python 3.11以上を必要とする機能を使用しています。
+> **注意:** `python3.11` と明示してください。環境によっては `python3` が 3.9 など古いバージョンを指していることがあり、その場合は実行時にエラーが発生します。
 
 ---
 
