@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import tempfile
+import threading
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -21,10 +22,12 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# メインデータフェッチの最大並列数（Tableau Cloud の同時接続制限に配慮）
+# メインデータフェッチの最大並列数
 _MAIN_WORKERS = 8
 # populate_connections の最大並列数
-_CONN_WORKERS = 10
+_CONN_WORKERS = 8
+# API リクエストのタイムアウト秒数（ハングアップ防止）
+_HTTP_TIMEOUT = 60
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +62,10 @@ def _make_server() -> tuple[TSC.Server, TSC.PersonalAccessTokenAuth]:
     # REQUESTS_CA_BUNDLE にCA証明書パスが指定されていればそれを使用（社内プロキシ対応）
     # 未指定の場合は True（デフォルトのCA束で検証）
     ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", "").strip()
-    server.add_http_options({"verify": ca_bundle if ca_bundle else True})
+    server.add_http_options({
+        "verify":  ca_bundle if ca_bundle else True,
+        "timeout": _HTTP_TIMEOUT,
+    })
     return server, auth
 
 
@@ -120,45 +126,43 @@ def _fetch_flow_runs(s: TSC.Server) -> list:
     return result[0] if isinstance(result, tuple) else result
 
 
-def _populate_wb_connections_batch(wb_list: list) -> tuple[dict[str, list], list]:
-    """ワークブックのバッチに対して接続情報を取得する（新規接続を使用）"""
-    s, a = _make_server()
+def _populate_wb_connections_batch(wb_list: list, make_server_fn) -> tuple[dict[str, list], list]:
+    """ワークブックのバッチに対して接続情報を取得する（共有トークンを使用）"""
+    s = make_server_fn()
     conn_dict: dict[str, list] = {}
     warnings: list = []
     try:
-        with s.auth.sign_in(a):
-            for wb in wb_list:
-                try:
-                    s.workbooks.populate_connections(wb)
-                    conn_dict[wb.id] = [
-                        getattr(c, "datasource_id", None)
-                        for c in (wb.connections or [])
-                        if getattr(c, "datasource_id", None)
-                    ]
-                except Exception:
-                    conn_dict[wb.id] = []
+        for wb in wb_list:
+            try:
+                s.workbooks.populate_connections(wb)
+                conn_dict[wb.id] = [
+                    getattr(c, "datasource_id", None)
+                    for c in (wb.connections or [])
+                    if getattr(c, "datasource_id", None)
+                ]
+            except Exception:
+                conn_dict[wb.id] = []
     except Exception as exc:
         warnings.append(_classify_error(exc, "ワークブック接続情報"))
     return conn_dict, warnings
 
 
-def _populate_flow_connections_batch(flow_list: list) -> tuple[dict[str, list], list]:
-    """Prepフローのバッチに対して接続情報を取得する（新規接続を使用）"""
-    s, a = _make_server()
+def _populate_flow_connections_batch(flow_list: list, make_server_fn) -> tuple[dict[str, list], list]:
+    """Prepフローのバッチに対して接続情報を取得する（共有トークンを使用）"""
+    s = make_server_fn()
     conn_dict: dict[str, list] = {}
     warnings: list = []
     try:
-        with s.auth.sign_in(a):
-            for fl in flow_list:
-                try:
-                    s.flows.populate_connections(fl)
-                    conn_dict[fl.id] = [
-                        getattr(c, "datasource_id", None)
-                        for c in (fl.connections or [])
-                        if getattr(c, "datasource_id", None)
-                    ]
-                except Exception:
-                    conn_dict[fl.id] = []
+        for fl in flow_list:
+            try:
+                s.flows.populate_connections(fl)
+                conn_dict[fl.id] = [
+                    getattr(c, "datasource_id", None)
+                    for c in (fl.connections or [])
+                    if getattr(c, "datasource_id", None)
+                ]
+            except Exception:
+                conn_dict[fl.id] = []
     except Exception as exc:
         warnings.append(_classify_error(exc, "Prepフロー接続情報"))
     return conn_dict, warnings
@@ -173,6 +177,25 @@ def fetch_all() -> dict[str, Any]:
     fetch_warnings: list[dict[str, str]] = []
     _server_url = os.environ.get("TABLEAU_SERVER_URL", "").rstrip("/")
     _site_name  = os.environ.get("TABLEAU_SITE_NAME", "")
+
+    # 1回だけサインインし、全ワーカーで共有するトークンを取得
+    # （並列サインインは Tableau Cloud の 429/401 を引き起こすため）
+    _main_server, _auth = _make_server()
+    _main_server.auth.sign_in(_auth)
+    _token    = _main_server.auth_token
+    _site_id  = _main_server.site_id
+    _user_id  = _main_server.user_id
+    _version  = _main_server.version
+    _ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", "").strip()
+    _verify   = _ca_bundle if _ca_bundle else True
+
+    def _make_worker_server() -> TSC.Server:
+        """既存の認証トークンを再利用するServerインスタンスを生成（サインイン不要）"""
+        s = TSC.Server(_server_url, use_server_version=False)
+        s.version = _version
+        s.add_http_options({"verify": _verify, "timeout": _HTTP_TIMEOUT})
+        s._set_auth(_site_id, _user_id, _token)
+        return s
 
     # ── Phase 1: 独立したリソースを並列取得 ──────────────────────────
     _fetch_tasks: dict[str, Callable] = {
@@ -192,9 +215,7 @@ def fetch_all() -> dict[str, Any]:
     raw["sched_map"] = {}
 
     def _run(fn: Callable) -> Any:
-        s, a = _make_server()
-        with s.auth.sign_in(a):
-            return fn(s)
+        return fn(_make_worker_server())
 
     with ThreadPoolExecutor(max_workers=_MAIN_WORKERS) as executor:
         future_map = {executor.submit(_run, fn): key for key, fn in _fetch_tasks.items()}
@@ -438,17 +459,16 @@ def fetch_all() -> dict[str, Any]:
         })
 
     # ── Phase 3: populate_connections を並列実行 ──────────────────────
-    # WB と Prepフロー の接続情報をスレッドプールで並列取得
     wb_conn_map:   dict[str, list] = {}
     flow_conn_map: dict[str, list] = {}
 
     with ThreadPoolExecutor(max_workers=_CONN_WORKERS) as executor:
         wb_futures = {
-            executor.submit(_populate_wb_connections_batch, chunk): "wb"
+            executor.submit(_populate_wb_connections_batch, chunk, _make_worker_server): "wb"
             for chunk in _chunk_list(workbooks_raw, _CONN_WORKERS)
         }
         flow_futures = {
-            executor.submit(_populate_flow_connections_batch, chunk): "flow"
+            executor.submit(_populate_flow_connections_batch, chunk, _make_worker_server): "flow"
             for chunk in _chunk_list(flows_raw, _CONN_WORKERS)
         }
         all_conn_futures = {**wb_futures, **flow_futures}
@@ -519,6 +539,11 @@ def fetch_all() -> dict[str, Any]:
         "stale_refresh_datasources": len([d for d in datasources if (d["days_stale"] or 0) > 30]),
         "top_views":          top_views,
     }
+
+    try:
+        _main_server.auth.sign_out()
+    except Exception:
+        pass
 
     return {
         "summary":           summary,
