@@ -127,7 +127,12 @@ def _fetch_flow_runs(s: TSC.Server) -> list:
 
 
 def _populate_wb_connections_batch(wb_list: list, make_server_fn) -> tuple[dict[str, list], list]:
-    """ワークブックのバッチに対して接続情報を取得する（共有トークンを使用）"""
+    """ワークブックのバッチに対して接続情報を取得する（共有トークンを使用）
+
+    返却値の conn_dict[wb_id] は (datasource_id, datasource_name) タプルのリスト。
+    Tableau Cloud では sqlproxy 接続の datasource_id が公開済み DS の ID と異なるため、
+    datasource_name による名前照合も必要。
+    """
     s = make_server_fn()
     conn_dict: dict[str, list] = {}
     warnings: list = []
@@ -136,11 +141,12 @@ def _populate_wb_connections_batch(wb_list: list, make_server_fn) -> tuple[dict[
             try:
                 s.workbooks.populate_connections(wb)
                 conn_dict[wb.id] = [
-                    getattr(c, "datasource_id", None)
+                    (getattr(c, "datasource_id", None), getattr(c, "datasource_name", None))
                     for c in (wb.connections or [])
-                    if getattr(c, "datasource_id", None)
                 ]
-            except Exception:
+                logger.debug("WB '%s' connections: %s", wb.name, conn_dict[wb.id])
+            except Exception as exc:
+                logger.warning("WB '%s' populate_connections 失敗: %s", wb.name, exc)
                 conn_dict[wb.id] = []
     except Exception as exc:
         warnings.append(_classify_error(exc, "ワークブック接続情報"))
@@ -148,7 +154,10 @@ def _populate_wb_connections_batch(wb_list: list, make_server_fn) -> tuple[dict[
 
 
 def _populate_flow_connections_batch(flow_list: list, make_server_fn) -> tuple[dict[str, list], list]:
-    """Prepフローのバッチに対して接続情報を取得する（共有トークンを使用）"""
+    """Prepフローのバッチに対して接続情報を取得する（共有トークンを使用）
+
+    返却値の conn_dict[flow_id] は (datasource_id, datasource_name) タプルのリスト。
+    """
     s = make_server_fn()
     conn_dict: dict[str, list] = {}
     warnings: list = []
@@ -157,11 +166,11 @@ def _populate_flow_connections_batch(flow_list: list, make_server_fn) -> tuple[d
             try:
                 s.flows.populate_connections(fl)
                 conn_dict[fl.id] = [
-                    getattr(c, "datasource_id", None)
+                    (getattr(c, "datasource_id", None), getattr(c, "datasource_name", None))
                     for c in (fl.connections or [])
-                    if getattr(c, "datasource_id", None)
                 ]
-            except Exception:
+            except Exception as exc:
+                logger.warning("Flow '%s' populate_connections 失敗: %s", fl.name, exc)
                 conn_dict[fl.id] = []
     except Exception as exc:
         warnings.append(_classify_error(exc, "Prepフロー接続情報"))
@@ -352,8 +361,9 @@ def fetch_all() -> dict[str, Any]:
 
     # ── スケジュール（抽出更新 + サブスクリプション）──────────────
     def _extract_schedule_info(obj: Any) -> tuple[str, str | None]:
-        """schedule 属性または schedule_id から (frequency, next_run_at) を返す"""
-        sched = getattr(obj, "schedule", None)
+        """TaskItem(schedule_item) / SubscriptionItem(schedule) から (frequency, next_run_at) を返す"""
+        # TaskItem は schedule_item 属性、SubscriptionItem は schedule 属性
+        sched = getattr(obj, "schedule_item", None) or getattr(obj, "schedule", None)
         if sched is None:
             sched_id = getattr(obj, "schedule_id", None)
             if sched_id:
@@ -369,8 +379,9 @@ def fetch_all() -> dict[str, Any]:
     schedules: list[dict] = []
 
     # ID → オブジェクト の辞書を作成してタスク解決を O(1) に
-    ds_id_map = {ds.id: ds for ds in datasources_raw}
-    wb_id_map = {wb.id: wb for wb in workbooks_raw}
+    ds_id_map   = {ds.id: ds for ds in datasources_raw}
+    wb_id_map   = {wb.id: wb for wb in workbooks_raw}
+    view_id_map = {v.id: v  for v  in views_raw}
 
     # 1) 抽出更新タスク
     for task in tasks_raw:
@@ -379,23 +390,23 @@ def fetch_all() -> dict[str, Any]:
         project_name = ""
         owner_name   = ""
 
-        ds_ref = getattr(task, "datasource", None)
-        wb_ref = getattr(task, "workbook",   None)
-
-        if ds_ref:
-            ds_id = getattr(ds_ref, "id", None)
-            content_name = getattr(ds_ref, "name", "") or ""
-            content_type = "datasource"
-            if ds_id and ds_id in ds_id_map:
-                project_name = ds_id_map[ds_id].project_name or ""
-                owner_name   = user_map.get(ds_id_map[ds_id].owner_id, "Unknown")
-        elif wb_ref:
-            wb_id = getattr(wb_ref, "id", None)
-            content_name = getattr(wb_ref, "name", "") or ""
-            content_type = "workbook"
-            if wb_id and wb_id in wb_id_map:
-                project_name = wb_id_map[wb_id].project_name or ""
-                owner_name   = user_map.get(wb_id_map[wb_id].owner_id, "Unknown")
+        # TSC TaskItem は target 属性 (Target(id, type)) にコンテンツ情報を持つ
+        target = getattr(task, "target", None)
+        if target:
+            t_id   = getattr(target, "id",   None)
+            t_type = (getattr(target, "type", "") or "").lower()
+            if t_type == "datasource" and t_id:
+                content_type = "datasource"
+                if t_id in ds_id_map:
+                    content_name = ds_id_map[t_id].name or ""
+                    project_name = ds_id_map[t_id].project_name or ""
+                    owner_name   = user_map.get(ds_id_map[t_id].owner_id, "Unknown")
+            elif t_type == "workbook" and t_id:
+                content_type = "workbook"
+                if t_id in wb_id_map:
+                    content_name = wb_id_map[t_id].name or ""
+                    project_name = wb_id_map[t_id].project_name or ""
+                    owner_name   = user_map.get(wb_id_map[t_id].owner_id, "Unknown")
 
         frequency, next_run_at = _extract_schedule_info(task)
         schedules.append({
@@ -412,14 +423,22 @@ def fetch_all() -> dict[str, Any]:
 
     # 2) サブスクリプション
     for sub in subscriptions_raw:
-        content      = getattr(sub, "content", None)
-        content_name = getattr(content, "name", "") or "" if content else ""
-        content_type = (getattr(content, "type", "") or "").lower()
-        user_obj     = getattr(sub, "user", None)
-        owner_name   = ""
-        if user_obj:
-            uid = getattr(user_obj, "id", None)
-            owner_name = user_map.get(uid, getattr(user_obj, "name", "") or "")
+        # TSC SubscriptionItem は target 属性 (Target(id, type)) にコンテンツ情報を持つ
+        s_target     = getattr(sub, "target", None)
+        content_name = ""
+        content_type = ""
+        if s_target:
+            t_id   = getattr(s_target, "id",   None)
+            t_type = (getattr(s_target, "type", "") or "").lower()
+            content_type = t_type
+            if t_type == "datasource" and t_id and t_id in ds_id_map:
+                content_name = ds_id_map[t_id].name or ""
+            elif t_type == "workbook" and t_id and t_id in wb_id_map:
+                content_name = wb_id_map[t_id].name or ""
+            elif t_type == "view" and t_id and t_id in view_id_map:
+                content_name = view_id_map[t_id].name or ""
+        # user_id 属性から直接取得（SubscriptionItem に user オブジェクトは存在しない）
+        owner_name = user_map.get(getattr(sub, "user_id", None), "Unknown")
         frequency, next_run_at = _extract_schedule_info(sub)
         schedules.append({
             "id":            sub.id,
@@ -490,15 +509,31 @@ def fetch_all() -> dict[str, Any]:
     wb_ref_count:   dict[str, int] = {}
     flow_ref_count: dict[str, int] = {}
 
-    for ds_ids in wb_conn_map.values():
-        for ds_id in ds_ids:
-            ghost_ds_ids.discard(ds_id)
-            wb_ref_count[ds_id] = wb_ref_count.get(ds_id, 0) + 1
+    # Tableau Cloud では populate_connections が返す datasource_id が
+    # 公開済み DS の ID と一致しない場合があるため、名前でもフォールバック照合する
+    _ds_id_set     = {ds.id   for ds in datasources_raw}
+    _ds_name_to_id = {ds.name: ds.id for ds in datasources_raw}
 
-    for ds_ids in flow_conn_map.values():
-        for ds_id in ds_ids:
-            ghost_ds_ids.discard(ds_id)
-            flow_ref_count[ds_id] = flow_ref_count.get(ds_id, 0) + 1
+    def _resolve_ds_id(ds_id: str | None, ds_name: str | None) -> str | None:
+        if ds_id and ds_id in _ds_id_set:
+            return ds_id
+        if ds_name and ds_name in _ds_name_to_id:
+            return _ds_name_to_id[ds_name]
+        return None
+
+    for conn_pairs in wb_conn_map.values():
+        for ds_id, ds_name in conn_pairs:
+            resolved = _resolve_ds_id(ds_id, ds_name)
+            if resolved:
+                ghost_ds_ids.discard(resolved)
+                wb_ref_count[resolved] = wb_ref_count.get(resolved, 0) + 1
+
+    for conn_pairs in flow_conn_map.values():
+        for ds_id, ds_name in conn_pairs:
+            resolved = _resolve_ds_id(ds_id, ds_name)
+            if resolved:
+                ghost_ds_ids.discard(resolved)
+                flow_ref_count[resolved] = flow_ref_count.get(resolved, 0) + 1
 
     for ds in datasources:
         ds["wb_ref_count"]    = wb_ref_count.get(ds["id"], 0)
