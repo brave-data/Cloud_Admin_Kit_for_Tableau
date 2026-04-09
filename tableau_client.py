@@ -224,8 +224,12 @@ def fetch_all() -> dict[str, Any]:
             try:
                 raw[key] = future.result()
             except Exception as exc:
-                logger.warning("%s の取得に失敗しました: %s", key, exc)
-                fetch_warnings.append(_classify_error(exc, key))
+                # sched_map の 405 は Tableau Cloud では仕様（schedules API 非対応）のため無視
+                if key == "sched_map" and "405" in str(exc):
+                    pass
+                else:
+                    logger.warning("%s の取得に失敗しました: %s", key, exc)
+                    fetch_warnings.append(_classify_error(exc, key))
 
     users_raw         = raw["users"]
     projects_raw      = raw["projects"]
