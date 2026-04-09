@@ -360,6 +360,14 @@ def fetch_all() -> dict[str, Any]:
         })
 
     # ── スケジュール（抽出更新 + サブスクリプション）──────────────
+    # interval_item クラス名 → frequency 文字列のマッピング
+    _INTERVAL_FREQ = {
+        "HourlyInterval":  "Hourly",
+        "DailyInterval":   "Daily",
+        "WeeklyInterval":  "Weekly",
+        "MonthlyInterval": "Monthly",
+    }
+
     def _extract_schedule_info(obj: Any) -> tuple[str, str | None]:
         """TaskItem(schedule_item) / SubscriptionItem(schedule) から (frequency, next_run_at) を返す"""
         # TaskItem は schedule_item 属性、SubscriptionItem は schedule 属性
@@ -370,7 +378,12 @@ def fetch_all() -> dict[str, Any]:
                 sched = _sched_map.get(sched_id)
         if sched is None:
             return "", None
-        frequency = getattr(sched, "frequency", "") or ""
+        # ScheduleItem は frequency プロパティを持たないため interval_item の型名から導出する
+        interval_item = getattr(sched, "interval_item", None)
+        if interval_item:
+            frequency = _INTERVAL_FREQ.get(type(interval_item).__name__, "")
+        else:
+            frequency = getattr(sched, "frequency", "") or ""
         next_raw  = getattr(sched, "next_run_at", None)
         if isinstance(next_raw, datetime):
             return frequency, _fmt(next_raw)
@@ -409,6 +422,14 @@ def fetch_all() -> dict[str, Any]:
                     owner_name   = user_map.get(wb_id_map[t_id].owner_id, "Unknown")
 
         frequency, next_run_at = _extract_schedule_info(task)
+        # task_type が "extractRefresh" → 完全更新、"Incremental" を含む → 差分更新
+        t_task_type = getattr(task, "task_type", "") or ""
+        if "Incremental" in t_task_type:
+            refresh_type = "IncrementalRefresh"
+        elif t_task_type == TSC.TaskItem.Type.ExtractRefresh:
+            refresh_type = "FullRefresh"
+        else:
+            refresh_type = t_task_type
         schedules.append({
             "id":            task.id,
             "schedule_kind": "extract",
@@ -416,7 +437,7 @@ def fetch_all() -> dict[str, Any]:
             "content_type":  content_type,
             "project":       project_name,
             "owner":         owner_name,
-            "refresh_type":  getattr(task, "extract_refresh_type", "") or "",
+            "refresh_type":  refresh_type,
             "frequency":     frequency,
             "next_run_at":   next_run_at,
         })
