@@ -9,8 +9,9 @@ import os
 import re
 import tempfile
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import defusedxml.ElementTree as DET
 import tableauserverclient as TSC
@@ -19,6 +20,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+# メインデータフェッチの最大並列数（Tableau Cloud の同時接続制限に配慮）
+_MAIN_WORKERS = 8
+# populate_connections の最大並列数
+_CONN_WORKERS = 10
 
 
 # ---------------------------------------------------------------------------
@@ -83,406 +89,449 @@ def _tableau_url(server_url: str, site_name: str, resource_type: str, resource_i
 
 
 # ---------------------------------------------------------------------------
+# 並列フェッチ用ヘルパー
+# ---------------------------------------------------------------------------
+
+def _chunk_list(lst: list, n: int) -> list[list]:
+    """リストを最大 n 個のチャンクに均等分割する"""
+    if not lst:
+        return []
+    size = max(1, -(-len(lst) // n))  # ceiling division
+    return [lst[i:i + size] for i in range(0, len(lst), size)]
+
+
+def _fetch_views_with_usage(s: TSC.Server) -> list:
+    """usage=True でビューを全件取得する"""
+    views: list = []
+    req = TSC.RequestOptions(pagesize=100)
+    while True:
+        page, pagination = s.views.get(req_options=req, usage=True)
+        views.extend(page)
+        if len(views) >= pagination.total_available:
+            break
+        req.pagenumber += 1
+    return views
+
+
+def _fetch_flow_runs(s: TSC.Server) -> list:
+    """フロー実行履歴（最新1ページ分）を取得する"""
+    req = TSC.RequestOptions(pagesize=100)
+    result = s.flow_runs.get(req)
+    return result[0] if isinstance(result, tuple) else result
+
+
+def _populate_wb_connections_batch(wb_list: list) -> tuple[dict[str, list], list]:
+    """ワークブックのバッチに対して接続情報を取得する（新規接続を使用）"""
+    s, a = _make_server()
+    conn_dict: dict[str, list] = {}
+    warnings: list = []
+    try:
+        with s.auth.sign_in(a):
+            for wb in wb_list:
+                try:
+                    s.workbooks.populate_connections(wb)
+                    conn_dict[wb.id] = [
+                        getattr(c, "datasource_id", None)
+                        for c in (wb.connections or [])
+                        if getattr(c, "datasource_id", None)
+                    ]
+                except Exception:
+                    conn_dict[wb.id] = []
+    except Exception as exc:
+        warnings.append(_classify_error(exc, "ワークブック接続情報"))
+    return conn_dict, warnings
+
+
+def _populate_flow_connections_batch(flow_list: list) -> tuple[dict[str, list], list]:
+    """Prepフローのバッチに対して接続情報を取得する（新規接続を使用）"""
+    s, a = _make_server()
+    conn_dict: dict[str, list] = {}
+    warnings: list = []
+    try:
+        with s.auth.sign_in(a):
+            for fl in flow_list:
+                try:
+                    s.flows.populate_connections(fl)
+                    conn_dict[fl.id] = [
+                        getattr(c, "datasource_id", None)
+                        for c in (fl.connections or [])
+                        if getattr(c, "datasource_id", None)
+                    ]
+                except Exception:
+                    conn_dict[fl.id] = []
+    except Exception as exc:
+        warnings.append(_classify_error(exc, "Prepフロー接続情報"))
+    return conn_dict, warnings
+
+
+# ---------------------------------------------------------------------------
 # メインフェッチ関数
 # ---------------------------------------------------------------------------
 
 def fetch_all() -> dict[str, Any]:
     """Tableau Cloud から全管理情報を取得して辞書で返す"""
-    server, auth = _make_server()
     fetch_warnings: list[dict[str, str]] = []
     _server_url = os.environ.get("TABLEAU_SERVER_URL", "").rstrip("/")
     _site_name  = os.environ.get("TABLEAU_SITE_NAME", "")
 
-    with server.auth.sign_in(auth):
+    # ── Phase 1: 独立したリソースを並列取得 ──────────────────────────
+    _fetch_tasks: dict[str, Callable] = {
+        "users":         lambda s: list(TSC.Pager(s.users)),
+        "projects":      lambda s: list(TSC.Pager(s.projects)),
+        "workbooks":     lambda s: list(TSC.Pager(s.workbooks)),
+        "datasources":   lambda s: list(TSC.Pager(s.datasources)),
+        "flows":         lambda s: list(TSC.Pager(s.flows)),
+        "views":         _fetch_views_with_usage,
+        "jobs":          lambda s: list(TSC.Pager(s.jobs, request_opts=TSC.RequestOptions(pagesize=50)))[:200],
+        "tasks":         lambda s: list(TSC.Pager(s.tasks)),
+        "subscriptions": lambda s: list(TSC.Pager(s.subscriptions)),
+        "sched_map":     lambda s: {_s.id: _s for _s in TSC.Pager(s.schedules)},
+        "flow_runs":     _fetch_flow_runs,
+    }
+    raw: dict[str, Any] = {k: [] for k in _fetch_tasks}
+    raw["sched_map"] = {}
 
-        # ── ユーザー ────────────────────────────────────────
-        # 権限不足（Site Administrator 未満）の場合に取得失敗することがある。
-        # 失敗時は空リストで続行し、以降のオーナー表示が "Unknown" になる。
-        try:
-            users_raw = list(TSC.Pager(server.users))
-        except Exception as exc:
-            logger.warning("ユーザー一覧の取得に失敗しました（権限不足の可能性）: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "ユーザー一覧"))
-            users_raw = []
-        user_map  = {u.id: (u.fullname or u.name) for u in users_raw}
+    def _run(fn: Callable) -> Any:
+        s, a = _make_server()
+        with s.auth.sign_in(a):
+            return fn(s)
 
-        users = []
-        for u in users_raw:
-            users.append({
-                "id":         u.id,
-                "name":       u.fullname or u.name,
-                "email":      u.email or "",
-                "site_role":  u.site_role or "",
-                "last_login": _fmt(u.last_login),
-                "days_since_login": _days_ago(u.last_login),
-                "url":        _tableau_url(_server_url, _site_name, "users", u.id),
-            })
+    with ThreadPoolExecutor(max_workers=_MAIN_WORKERS) as executor:
+        future_map = {executor.submit(_run, fn): key for key, fn in _fetch_tasks.items()}
+        for future in as_completed(future_map):
+            key = future_map[future]
+            try:
+                raw[key] = future.result()
+            except Exception as exc:
+                logger.warning("%s の取得に失敗しました: %s", key, exc)
+                fetch_warnings.append(_classify_error(exc, key))
 
-        # ── プロジェクト ─────────────────────────────────────
-        try:
-            projects_raw = list(TSC.Pager(server.projects))
-        except Exception as exc:
-            logger.warning("プロジェクト一覧の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "プロジェクト一覧"))
-            projects_raw = []
-        project_map  = {p.id: p.name for p in projects_raw}
+    users_raw         = raw["users"]
+    projects_raw      = raw["projects"]
+    workbooks_raw     = raw["workbooks"]
+    datasources_raw   = raw["datasources"]
+    flows_raw         = raw["flows"]
+    views_raw         = raw["views"]
+    jobs_raw          = raw["jobs"]
+    tasks_raw         = raw["tasks"]
+    subscriptions_raw = raw["subscriptions"]
+    _sched_map        = raw["sched_map"]
+    _flow_runs_raw    = raw["flow_runs"]
 
-        projects = []
-        for p in projects_raw:
-            projects.append({
-                "id":          p.id,
-                "name":        p.name,
-                "description": p.description or "",
-                "parent_id":   p.parent_id,
-                "parent_name": project_map.get(p.parent_id, ""),
-            })
+    # ── Phase 2: マップ構築とデータ変換 ──────────────────────────────
+    user_map    = {u.id: (u.fullname or u.name) for u in users_raw}
+    project_map = {p.id: p.name for p in projects_raw}
 
-        # ── ワークブック ─────────────────────────────────────
-        try:
-            workbooks_raw = list(TSC.Pager(server.workbooks))
-        except Exception as exc:
-            logger.warning("ワークブック一覧の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "ワークブック一覧"))
-            workbooks_raw = []
-        workbooks = []
-        for wb in workbooks_raw:
-            size_mb = round((getattr(wb, "size", None) or 0) / 1024 / 1024, 2)
-            workbooks.append({
-                "id":           wb.id,
-                "name":         wb.name,
-                "project":      wb.project_name or "",
-                "owner":        user_map.get(wb.owner_id, "Unknown"),
-                "created_at":   _fmt(wb.created_at),
-                "updated_at":   _fmt(wb.updated_at),
-                "days_stale":   _days_ago(wb.updated_at),
-                "size_mb":      size_mb,
-                "tags":         sorted(wb.tags) if wb.tags else [],
-                "url":          wb.webpage_url or "",
-                "description":  wb.description or "",
-            })
+    # ── ユーザー ────────────────────────────────────────
+    # 権限不足（Site Administrator 未満）の場合は空リストで続行し、オーナー表示が "Unknown" になる。
+    users = []
+    for u in users_raw:
+        users.append({
+            "id":              u.id,
+            "name":            u.fullname or u.name,
+            "email":           u.email or "",
+            "site_role":       u.site_role or "",
+            "last_login":      _fmt(u.last_login),
+            "days_since_login": _days_ago(u.last_login),
+            "url":             _tableau_url(_server_url, _site_name, "users", u.id),
+        })
 
-        # ── データソース ─────────────────────────────────────
-        try:
-            datasources_raw = list(TSC.Pager(server.datasources))
-        except Exception as exc:
-            logger.warning("データソース一覧の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "データソース一覧"))
-            datasources_raw = []
-        datasources = []
-        for ds in datasources_raw:
-            datasources.append({
-                "id":           ds.id,
-                "name":         ds.name,
-                "project":      ds.project_name or "",
-                "owner":        user_map.get(ds.owner_id, "Unknown"),
-                "type":         ds.datasource_type or "",
-                "certified":    bool(getattr(ds, "certified", False)),
-                "cert_note":    ds.certification_note or "",
-                "created_at":   _fmt(ds.created_at),
-                "updated_at":   _fmt(ds.updated_at),
-                "days_stale":   _days_ago(ds.updated_at),
-                "description":  ds.description or "",
-                "url":          _tableau_url(_server_url, _site_name, "datasources", ds.id),
-            })
+    # ── プロジェクト ─────────────────────────────────────
+    projects = []
+    for p in projects_raw:
+        projects.append({
+            "id":          p.id,
+            "name":        p.name,
+            "description": p.description or "",
+            "parent_id":   p.parent_id,
+            "parent_name": project_map.get(p.parent_id, ""),
+        })
 
-        # ── Prep フロー（先行取得: ゴーストDS検出で使用）──────────────
-        flows_raw: list = []
-        try:
-            flows_raw = list(TSC.Pager(server.flows))
-        except Exception as exc:
-            logger.warning("Prepフロー一覧の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "Prepフロー一覧"))
+    # ── ワークブック ─────────────────────────────────────
+    workbooks = []
+    for wb in workbooks_raw:
+        size_mb = round((getattr(wb, "size", None) or 0) / 1024 / 1024, 2)
+        workbooks.append({
+            "id":           wb.id,
+            "name":         wb.name,
+            "project":      wb.project_name or "",
+            "owner":        user_map.get(wb.owner_id, "Unknown"),
+            "created_at":   _fmt(wb.created_at),
+            "updated_at":   _fmt(wb.updated_at),
+            "days_stale":   _days_ago(wb.updated_at),
+            "size_mb":      size_mb,
+            "tags":         sorted(wb.tags) if wb.tags else [],
+            "url":          wb.webpage_url or "",
+            "description":  wb.description or "",
+        })
 
-        # ── ゴーストデータソース検出 & 参照数カウント ─────────────
-        # WBとPrepフローのどちらからも参照されていないデータソースを検出
-        ghost_ds_ids: set[str] = {ds.id for ds in datasources_raw}
-        wb_ref_count:   dict[str, int] = {}   # datasource_id → 参照ワークブック数
-        flow_ref_count: dict[str, int] = {}   # datasource_id → 参照Prepフロー数
-        try:
-            for wb in workbooks_raw:
-                try:
-                    server.workbooks.populate_connections(wb)
-                    for conn in (wb.connections or []):
-                        ds_id = getattr(conn, "datasource_id", None)
-                        if ds_id:
-                            ghost_ds_ids.discard(ds_id)
-                            wb_ref_count[ds_id] = wb_ref_count.get(ds_id, 0) + 1
-                except Exception:
-                    pass
-        except Exception as exc:
-            logger.warning("ワークブック接続情報の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "ワークブック接続情報"))
+    # ── データソース ─────────────────────────────────────
+    datasources = []
+    for ds in datasources_raw:
+        datasources.append({
+            "id":           ds.id,
+            "name":         ds.name,
+            "project":      ds.project_name or "",
+            "owner":        user_map.get(ds.owner_id, "Unknown"),
+            "type":         ds.datasource_type or "",
+            "certified":    bool(getattr(ds, "certified", False)),
+            "cert_note":    ds.certification_note or "",
+            "created_at":   _fmt(ds.created_at),
+            "updated_at":   _fmt(ds.updated_at),
+            "days_stale":   _days_ago(ds.updated_at),
+            "description":  ds.description or "",
+            "url":          _tableau_url(_server_url, _site_name, "datasources", ds.id),
+        })
 
-        try:
-            for fl in flows_raw:
-                try:
-                    server.flows.populate_connections(fl)
-                    for conn in (fl.connections or []):
-                        ds_id = getattr(conn, "datasource_id", None)
-                        if ds_id:
-                            ghost_ds_ids.discard(ds_id)
-                            flow_ref_count[ds_id] = flow_ref_count.get(ds_id, 0) + 1
-                except Exception:
-                    pass
-        except Exception as exc:
-            logger.warning("Prepフロー接続情報の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "Prepフロー接続情報"))
+    # ── ビュー (使用状況付き) ───────────────────────────
+    views = []
+    for v in views_raw:
+        # TSC は last_viewed_at を直接公開しないため、利用可能な属性を試みる
+        last_viewed = (getattr(v, "recently_viewed_at", None)
+                       or getattr(v, "last_viewed_at", None))
+        days_since_viewed = (_days_ago(last_viewed)
+                             if isinstance(last_viewed, datetime)
+                             else _days_ago(v.updated_at))
+        _view_content_url = getattr(v, "content_url", "") or ""
+        views.append({
+            "id":               v.id,
+            "name":             v.name,
+            "workbook_id":      v.workbook_id,
+            "owner":            user_map.get(v.owner_id, "Unknown"),
+            "total_views":      v.total_views or 0,
+            "created_at":       _fmt(v.created_at),
+            "updated_at":       _fmt(v.updated_at),
+            "days_stale":       _days_ago(v.updated_at),
+            "last_viewed_at":   _fmt(last_viewed) if isinstance(last_viewed, datetime) else None,
+            "days_since_viewed": days_since_viewed,
+            "url":              _tableau_url(_server_url, _site_name, "views", _view_content_url) if _view_content_url else "",
+        })
 
-        # ── ビュー (使用状況付き) ───────────────────────────
-        # TSC 0.30+ では usage=True を views.get() に直接渡す必要がある
-        views_raw = []
-        try:
-            req = TSC.RequestOptions(pagesize=100)
-            while True:
-                page, pagination = server.views.get(req_options=req, usage=True)
-                views_raw.extend(page)
-                if len(views_raw) >= pagination.total_available:
-                    break
-                req.pagenumber += 1
-        except Exception as exc:
-            logger.warning("ビュー一覧の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "ビュー一覧"))
-        views = []
-        for v in views_raw:
-            # TSC は last_viewed_at を直接公開しないため、利用可能な属性を試みる
-            last_viewed = (getattr(v, "recently_viewed_at", None)
-                           or getattr(v, "last_viewed_at", None))
-            days_since_viewed = (_days_ago(last_viewed)
-                                 if isinstance(last_viewed, datetime)
-                                 else _days_ago(v.updated_at))
-            _view_content_url = getattr(v, "content_url", "") or ""
-            views.append({
-                "id":               v.id,
-                "name":             v.name,
-                "workbook_id":      v.workbook_id,
-                "owner":            user_map.get(v.owner_id, "Unknown"),
-                "total_views":      v.total_views or 0,
-                "created_at":       _fmt(v.created_at),
-                "updated_at":       _fmt(v.updated_at),
-                "days_stale":       _days_ago(v.updated_at),
-                "last_viewed_at":   _fmt(last_viewed) if isinstance(last_viewed, datetime) else None,
-                "days_since_viewed": days_since_viewed,
-                "url":              _tableau_url(_server_url, _site_name, "views", _view_content_url) if _view_content_url else "",
-            })
+    # ワークブック名をビューに付与
+    wb_map = {wb["id"]: wb["name"] for wb in workbooks}
+    for v in views:
+        v["workbook_name"] = wb_map.get(v["workbook_id"], "")
 
-        # ワークブック名をビューに付与
-        wb_map = {wb["id"]: wb["name"] for wb in workbooks}
-        for v in views:
-            v["workbook_name"] = wb_map.get(v["workbook_id"], "")
+    # ── ジョブ (サマリ計算用・直近 200 件) ──────────────
+    jobs = []
+    for j in jobs_raw:
+        jobs.append({
+            "id":           getattr(j, "id",           getattr(j, "_id",           None)),
+            "type":         getattr(j, "type",         getattr(j, "_type",         "")) or "",
+            "status":       getattr(j, "status",       getattr(j, "_status",       "")) or "",
+            "created_at":   _fmt(getattr(j, "created_at",   getattr(j, "_created_at",   None))),
+            "started_at":   _fmt(getattr(j, "started_at",   getattr(j, "_started_at",   None))),
+            "completed_at": _fmt(getattr(j, "ended_at",     getattr(j, "_ended_at",     None))),
+            "notes":        (getattr(j, "notes", "") or "")[:300],
+        })
 
-        # ── ジョブ (サマリ計算用・直近 200 件、返却なし) ────────────
-        job_req = TSC.RequestOptions(pagesize=50)
-        try:
-            jobs_raw = list(TSC.Pager(server.jobs, request_opts=job_req))[:200]
-        except Exception as exc:
-            logger.warning("ジョブ一覧の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "ジョブ一覧"))
-            jobs_raw = []
+    # ── スケジュール（抽出更新 + サブスクリプション）──────────────
+    def _extract_schedule_info(obj: Any) -> tuple[str, str | None]:
+        """schedule 属性または schedule_id から (frequency, next_run_at) を返す"""
+        sched = getattr(obj, "schedule", None)
+        if sched is None:
+            sched_id = getattr(obj, "schedule_id", None)
+            if sched_id:
+                sched = _sched_map.get(sched_id)
+        if sched is None:
+            return "", None
+        frequency = getattr(sched, "frequency", "") or ""
+        next_raw  = getattr(sched, "next_run_at", None)
+        if isinstance(next_raw, datetime):
+            return frequency, _fmt(next_raw)
+        return frequency, (str(next_raw) if next_raw else None)
 
-        jobs = []
-        for j in jobs_raw:
-            jobs.append({
-                "id":           getattr(j, "id",           getattr(j, "_id",           None)),
-                "type":         getattr(j, "type",         getattr(j, "_type",         "")) or "",
-                "status":       getattr(j, "status",       getattr(j, "_status",       "")) or "",
-                "created_at":   _fmt(getattr(j, "created_at",   getattr(j, "_created_at",   None))),
-                "started_at":   _fmt(getattr(j, "started_at",   getattr(j, "_started_at",   None))),
-                "completed_at": _fmt(getattr(j, "ended_at",     getattr(j, "_ended_at",     None))),
-                "notes":        (getattr(j, "notes", "") or "")[:300],
-            })
+    schedules: list[dict] = []
 
-        # ── スケジュール（抽出更新 + サブスクリプション）──────────────
-        schedules = []
+    # ID → オブジェクト の辞書を作成してタスク解決を O(1) に
+    ds_id_map = {ds.id: ds for ds in datasources_raw}
+    wb_id_map = {wb.id: wb for wb in workbooks_raw}
 
-        # スケジュールマスタを事前取得（task.schedule が None のときのフォールバック）
-        _sched_map: dict[str, Any] = {}
-        try:
-            for _s in TSC.Pager(server.schedules):
-                _sched_map[_s.id] = _s
-        except Exception:
-            pass  # Tableau Cloud では schedules エンドポイントが使えない場合がある
+    # 1) 抽出更新タスク
+    for task in tasks_raw:
+        content_name = ""
+        content_type = ""
+        project_name = ""
+        owner_name   = ""
 
-        def _extract_schedule_info(obj: Any) -> tuple[str, str | None]:
-            """schedule 属性または schedule_id から (frequency, next_run_at) を返す"""
-            sched = getattr(obj, "schedule", None)
-            if sched is None:
-                sched_id = getattr(obj, "schedule_id", None)
-                if sched_id:
-                    sched = _sched_map.get(sched_id)
-            if sched is None:
-                return "", None
-            frequency = getattr(sched, "frequency", "") or ""
-            next_raw  = getattr(sched, "next_run_at", None)
-            if isinstance(next_raw, datetime):
-                return frequency, _fmt(next_raw)
-            return frequency, (str(next_raw) if next_raw else None)
+        ds_ref = getattr(task, "datasource", None)
+        wb_ref = getattr(task, "workbook",   None)
 
-        # 1) 抽出更新タスク
-        try:
-            for task in TSC.Pager(server.tasks):
-                content_name = ""
-                content_type = ""
-                project_name = ""
-                owner_name   = ""
+        if ds_ref:
+            ds_id = getattr(ds_ref, "id", None)
+            content_name = getattr(ds_ref, "name", "") or ""
+            content_type = "datasource"
+            if ds_id and ds_id in ds_id_map:
+                project_name = ds_id_map[ds_id].project_name or ""
+                owner_name   = user_map.get(ds_id_map[ds_id].owner_id, "Unknown")
+        elif wb_ref:
+            wb_id = getattr(wb_ref, "id", None)
+            content_name = getattr(wb_ref, "name", "") or ""
+            content_type = "workbook"
+            if wb_id and wb_id in wb_id_map:
+                project_name = wb_id_map[wb_id].project_name or ""
+                owner_name   = user_map.get(wb_id_map[wb_id].owner_id, "Unknown")
 
-                ds_ref = getattr(task, "datasource", None)
-                wb_ref = getattr(task, "workbook",   None)
+        frequency, next_run_at = _extract_schedule_info(task)
+        schedules.append({
+            "id":            task.id,
+            "schedule_kind": "extract",
+            "content_name":  content_name,
+            "content_type":  content_type,
+            "project":       project_name,
+            "owner":         owner_name,
+            "refresh_type":  getattr(task, "extract_refresh_type", "") or "",
+            "frequency":     frequency,
+            "next_run_at":   next_run_at,
+        })
 
-                if ds_ref:
-                    content_name = getattr(ds_ref, "name", "") or ""
-                    content_type = "datasource"
-                    for ds in datasources_raw:
-                        if ds.id == getattr(ds_ref, "id", None):
-                            project_name = ds.project_name or ""
-                            owner_name   = user_map.get(ds.owner_id, "Unknown")
-                            break
-                elif wb_ref:
-                    content_name = getattr(wb_ref, "name", "") or ""
-                    content_type = "workbook"
-                    for wb in workbooks_raw:
-                        if wb.id == getattr(wb_ref, "id", None):
-                            project_name = wb.project_name or ""
-                            owner_name   = user_map.get(wb.owner_id, "Unknown")
-                            break
+    # 2) サブスクリプション
+    for sub in subscriptions_raw:
+        content      = getattr(sub, "content", None)
+        content_name = getattr(content, "name", "") or "" if content else ""
+        content_type = (getattr(content, "type", "") or "").lower()
+        user_obj     = getattr(sub, "user", None)
+        owner_name   = ""
+        if user_obj:
+            uid = getattr(user_obj, "id", None)
+            owner_name = user_map.get(uid, getattr(user_obj, "name", "") or "")
+        frequency, next_run_at = _extract_schedule_info(sub)
+        schedules.append({
+            "id":            sub.id,
+            "schedule_kind": "subscription",
+            "content_name":  content_name,
+            "content_type":  content_type,
+            "project":       "",
+            "owner":         owner_name,
+            "refresh_type":  "",
+            "frequency":     frequency,
+            "next_run_at":   next_run_at,
+            "subject":       getattr(sub, "subject", "") or "",
+        })
 
-                frequency, next_run_at = _extract_schedule_info(task)
-                schedules.append({
-                    "id":            task.id,
-                    "schedule_kind": "extract",
-                    "content_name":  content_name,
-                    "content_type":  content_type,
-                    "project":       project_name,
-                    "owner":         owner_name,
-                    "refresh_type":  getattr(task, "extract_refresh_type", "") or "",
-                    "frequency":     frequency,
-                    "next_run_at":   next_run_at,
-                })
-        except Exception as exc:
-            logger.warning("抽出スケジュールの取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "抽出スケジュール"))
+    # ── Prep フロー ──────────────────────────────────────
+    flow_run_map: dict[str, Any] = {}
+    for run in _flow_runs_raw:
+        fid       = getattr(run, "flow_id", None)
+        completed = getattr(run, "completed_at", getattr(run, "ended_at", None))
+        if fid and completed is not None:
+            existing = flow_run_map.get(fid)
+            if existing is None or _ensure_utc(completed) > _ensure_utc(existing):
+                flow_run_map[fid] = completed
 
-        # 2) サブスクリプション
-        try:
-            for sub in TSC.Pager(server.subscriptions):
-                content      = getattr(sub, "content", None)
-                content_name = getattr(content, "name", "") or "" if content else ""
-                content_type = (getattr(content, "type", "") or "").lower()
-                user_obj     = getattr(sub, "user", None)
-                owner_name   = ""
-                if user_obj:
-                    uid = getattr(user_obj, "id", None)
-                    owner_name = user_map.get(uid, getattr(user_obj, "name", "") or "")
-                frequency, next_run_at = _extract_schedule_info(sub)
-                schedules.append({
-                    "id":            sub.id,
-                    "schedule_kind": "subscription",
-                    "content_name":  content_name,
-                    "content_type":  content_type,
-                    "project":       "",
-                    "owner":         owner_name,
-                    "refresh_type":  "",
-                    "frequency":     frequency,
-                    "next_run_at":   next_run_at,
-                    "subject":       getattr(sub, "subject", "") or "",
-                })
-        except Exception as exc:
-            logger.warning("サブスクリプションの取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "サブスクリプション"))
+    flows = []
+    for fl in flows_raw:
+        last_run = flow_run_map.get(fl.id)
+        flows.append({
+            "id":            fl.id,
+            "name":          fl.name,
+            "project":       fl.project_name or "",
+            "owner":         user_map.get(fl.owner_id, "Unknown"),
+            "created_at":    _fmt(fl.created_at),
+            "updated_at":    _fmt(fl.updated_at),
+            "days_stale":    _days_ago(fl.updated_at),
+            "last_run_at":   _fmt(last_run),
+            "days_since_run": _days_ago(last_run),
+            "description":   fl.description or "",
+            "tags":          sorted(fl.tags) if fl.tags else [],
+            "url":           _tableau_url(_server_url, _site_name, "flows", fl.id),
+        })
 
-        # ── Prep フロー（flows_raw は上部で先行取得済み）────────────
-        # フロー実行履歴（最新1ページ分）でフローIDごとの最終実行日を取得
-        flow_run_map: dict[str, object] = {}
-        try:
-            run_req = TSC.RequestOptions(pagesize=100)
-            _flow_run_result = server.flow_runs.get(run_req)
-            # TSC バージョンにより (list, pagination) またはリスト単体を返す
-            recent_runs = _flow_run_result[0] if isinstance(_flow_run_result, tuple) else _flow_run_result
-            for run in recent_runs:
-                fid = getattr(run, "flow_id", None)
-                completed = getattr(run, "completed_at", getattr(run, "ended_at", None))
-                if fid and completed is not None:
-                    existing = flow_run_map.get(fid)
-                    if existing is None or _ensure_utc(completed) > _ensure_utc(existing):
-                        flow_run_map[fid] = completed
-        except Exception as exc:
-            logger.warning("フロー実行履歴の取得に失敗しました: %s", exc)
-            fetch_warnings.append(_classify_error(exc, "フロー実行履歴"))
+    # ── Phase 3: populate_connections を並列実行 ──────────────────────
+    # WB と Prepフロー の接続情報をスレッドプールで並列取得
+    wb_conn_map:   dict[str, list] = {}
+    flow_conn_map: dict[str, list] = {}
 
-        flows = []
-        for fl in flows_raw:
-            last_run = flow_run_map.get(fl.id)
-            flows.append({
-                "id":            fl.id,
-                "name":          fl.name,
-                "project":       fl.project_name or "",
-                "owner":         user_map.get(fl.owner_id, "Unknown"),
-                "created_at":    _fmt(fl.created_at),
-                "updated_at":    _fmt(fl.updated_at),
-                "days_stale":    _days_ago(fl.updated_at),
-                "last_run_at":   _fmt(last_run),
-                "days_since_run": _days_ago(last_run),
-                "description":   fl.description or "",
-                "tags":          sorted(fl.tags) if fl.tags else [],
-                "url":           _tableau_url(_server_url, _site_name, "flows", fl.id),
-            })
-
-        # ── サマリ ───────────────────────────────────────────
-        role_counts: dict[str, int] = {}
-        for u in users:
-            role_counts[u["site_role"]] = role_counts.get(u["site_role"], 0) + 1
-
-        stale_wb  = [w for w in workbooks if (w["days_stale"] or 0) > 180]
-        stale_ds  = [d for d in datasources if (d["days_stale"] or 0) > 180]
-        top_views = sorted(views, key=lambda v: v["total_views"], reverse=True)[:10]
-
-        active_wb_ids = {v["workbook_id"] for v in views if v["total_views"] > 0}
-        unused_wb = [w for w in workbooks if w["id"] not in active_wb_ids]
-
-        inactive_users = [u for u in users
-                          if u["days_since_login"] is not None
-                          and u["days_since_login"] > 90]
-
-        failed_jobs = [j for j in jobs if j["status"] == "Failed"]
-
-        # is_ghost フラグ・参照数（WB + Prepフロー別）を各データソースに付与
-        for ds in datasources:
-            ds["wb_ref_count"]    = wb_ref_count.get(ds["id"], 0)
-            ds["flow_ref_count"]  = flow_ref_count.get(ds["id"], 0)
-            ds["reference_count"] = ds["wb_ref_count"] + ds["flow_ref_count"]
-            ds["is_ghost"]        = ds["reference_count"] == 0
-
-        ghost_datasources = [ds for ds in datasources if ds["is_ghost"]]
-
-        summary = {
-            "total_users":        len(users),
-            "total_workbooks":    len(workbooks),
-            "total_datasources":  len(datasources),
-            "total_views":        len(views),
-            "total_projects":     len(projects),
-            "total_flows":        len(flows),
-            "role_counts":        role_counts,
-            "stale_workbooks":    len(stale_wb),
-            "stale_datasources":  len(stale_ds),
-            "unused_workbooks":   len(unused_wb),
-            "inactive_users_90d": len(inactive_users),
-            "failed_jobs_recent": len(failed_jobs),
-            "ghost_datasources":        len(ghost_datasources),
-            "stale_refresh_datasources": len([d for d in datasources if (d["days_stale"] or 0) > 30]),
-            "top_views":          top_views,
+    with ThreadPoolExecutor(max_workers=_CONN_WORKERS) as executor:
+        wb_futures = {
+            executor.submit(_populate_wb_connections_batch, chunk): "wb"
+            for chunk in _chunk_list(workbooks_raw, _CONN_WORKERS)
         }
-
-        return {
-            "summary":          summary,
-            "users":            users,
-            "workbooks":        workbooks,
-            "datasources":      datasources,
-            "views":            views,
-            "schedules":        schedules,
-            "flows":            flows,
-            "ghost_datasources": ghost_datasources,
-            "fetch_warnings":   fetch_warnings,
-            "fetched_at":       datetime.now(timezone.utc).isoformat(),
+        flow_futures = {
+            executor.submit(_populate_flow_connections_batch, chunk): "flow"
+            for chunk in _chunk_list(flows_raw, _CONN_WORKERS)
         }
+        all_conn_futures = {**wb_futures, **flow_futures}
+        for future in as_completed(all_conn_futures):
+            kind = all_conn_futures[future]
+            conn_dict, warns = future.result()
+            fetch_warnings.extend(warns)
+            if kind == "wb":
+                wb_conn_map.update(conn_dict)
+            else:
+                flow_conn_map.update(conn_dict)
+
+    # ── Phase 4: Ghost DS フラグ付与 ─────────────────────────────────
+    ghost_ds_ids:   set[str]      = {ds.id for ds in datasources_raw}
+    wb_ref_count:   dict[str, int] = {}
+    flow_ref_count: dict[str, int] = {}
+
+    for ds_ids in wb_conn_map.values():
+        for ds_id in ds_ids:
+            ghost_ds_ids.discard(ds_id)
+            wb_ref_count[ds_id] = wb_ref_count.get(ds_id, 0) + 1
+
+    for ds_ids in flow_conn_map.values():
+        for ds_id in ds_ids:
+            ghost_ds_ids.discard(ds_id)
+            flow_ref_count[ds_id] = flow_ref_count.get(ds_id, 0) + 1
+
+    for ds in datasources:
+        ds["wb_ref_count"]    = wb_ref_count.get(ds["id"], 0)
+        ds["flow_ref_count"]  = flow_ref_count.get(ds["id"], 0)
+        ds["reference_count"] = ds["wb_ref_count"] + ds["flow_ref_count"]
+        ds["is_ghost"]        = ds["reference_count"] == 0
+
+    ghost_datasources = [ds for ds in datasources if ds["is_ghost"]]
+
+    # ── サマリ ───────────────────────────────────────────
+    role_counts: dict[str, int] = {}
+    for u in users:
+        role_counts[u["site_role"]] = role_counts.get(u["site_role"], 0) + 1
+
+    stale_wb  = [w for w in workbooks if (w["days_stale"] or 0) > 180]
+    stale_ds  = [d for d in datasources if (d["days_stale"] or 0) > 180]
+    top_views = sorted(views, key=lambda v: v["total_views"], reverse=True)[:10]
+
+    active_wb_ids = {v["workbook_id"] for v in views if v["total_views"] > 0}
+    unused_wb     = [w for w in workbooks if w["id"] not in active_wb_ids]
+
+    inactive_users = [u for u in users
+                      if u["days_since_login"] is not None
+                      and u["days_since_login"] > 90]
+
+    failed_jobs = [j for j in jobs if j["status"] == "Failed"]
+
+    summary = {
+        "total_users":        len(users),
+        "total_workbooks":    len(workbooks),
+        "total_datasources":  len(datasources),
+        "total_views":        len(views),
+        "total_projects":     len(projects),
+        "total_flows":        len(flows),
+        "role_counts":        role_counts,
+        "stale_workbooks":    len(stale_wb),
+        "stale_datasources":  len(stale_ds),
+        "unused_workbooks":   len(unused_wb),
+        "inactive_users_90d": len(inactive_users),
+        "failed_jobs_recent": len(failed_jobs),
+        "ghost_datasources":        len(ghost_datasources),
+        "stale_refresh_datasources": len([d for d in datasources if (d["days_stale"] or 0) > 30]),
+        "top_views":          top_views,
+    }
+
+    return {
+        "summary":           summary,
+        "users":             users,
+        "workbooks":         workbooks,
+        "datasources":       datasources,
+        "views":             views,
+        "schedules":         schedules,
+        "flows":             flows,
+        "ghost_datasources": ghost_datasources,
+        "fetch_warnings":    fetch_warnings,
+        "fetched_at":        datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
