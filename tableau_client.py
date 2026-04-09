@@ -49,7 +49,13 @@ def _make_server() -> tuple[TSC.Server, TSC.PersonalAccessTokenAuth]:
 
     auth   = TSC.PersonalAccessTokenAuth(name, secret, site_id=site)
     server = TSC.Server(url, use_server_version=True)
-    server.add_http_options({"verify": True})
+
+    # SSL_VERIFY=false を .env に設定すると証明書検証をスキップ（社内プロキシ環境向け）
+    ssl_verify = os.environ.get("SSL_VERIFY", "true").strip().lower() != "false"
+    if not ssl_verify:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    server.add_http_options({"verify": ssl_verify})
     return server, auth
 
 
