@@ -844,3 +844,281 @@ def _parse_twb_fields(twb_content: str) -> dict[str, Any]:
         "edges":           list(edges.values()),
         "datasource_info": datasource_info,
     }
+
+
+# ---------------------------------------------------------------------------
+# リビジョン差分比較
+# ---------------------------------------------------------------------------
+
+def _parse_twb_filters(twb_content: str) -> list[dict]:
+    """TWB XML からフィルター情報を抽出する"""
+    root = DET.fromstring(twb_content)
+    filters: list[dict] = []
+
+    # データソース名マップ (name → caption)
+    ds_caption_map: dict[str, str] = {}
+    datasources_el = root.find("datasources")
+    if datasources_el:
+        for ds in datasources_el.findall("datasource"):
+            n = ds.get("name", "")
+            c = ds.get("caption") or n
+            if n:
+                ds_caption_map[n] = c
+
+    def _extract_filter(f_el: Any, sheet_name: str) -> dict | None:
+        col       = f_el.get("column", "")
+        ds_name   = f_el.get("datasource", "")
+        f_class   = f_el.get("class", "")
+        is_ctx    = f_el.get("context", "false").lower() == "true"
+        is_ds_f   = f_el.get("datasource-filter", "false").lower() == "true"
+        ds_cap    = ds_caption_map.get(ds_name, ds_name)
+
+        # フィールド名を読みやすい形に正規化（[xxx] → xxx）
+        field_name = re.sub(r"^\[(.+)\]$", r"\1", col)
+
+        detail: dict = {}
+        if f_class == "categorical":
+            members = [m.get("member", "") for m in f_el.findall(".//member")]
+            # member 数が多い場合は件数のみ
+            if len(members) <= 20:
+                detail["members"] = members
+            else:
+                detail["member_count"] = len(members)
+        elif f_class == "quantitative":
+            detail["min"] = f_el.get("min", "")
+            detail["max"] = f_el.get("max", "")
+        elif f_class == "relative-date":
+            detail["anchor"]   = f_el.get("anchor", "")
+            detail["period"]   = f_el.get("period-type", "")
+            detail["range_n"]  = f_el.get("range-n", "")
+        elif f_class == "top":
+            top_el = f_el.find("top")
+            if top_el is not None:
+                detail["count"]      = top_el.get("count", "")
+                detail["direction"]  = top_el.get("direction", "")
+                detail["field_name"] = top_el.get("field-name", "")
+
+        return {
+            "sheet":                sheet_name,
+            "datasource":           ds_cap,
+            "field":                field_name,
+            "type":                 f_class or "unknown",
+            "is_context":           is_ctx,
+            "is_datasource_filter": is_ds_f,
+            "detail":               detail,
+        }
+
+    # ワークシートレベルのフィルター
+    worksheets_el = root.find("worksheets")
+    if worksheets_el:
+        for ws in worksheets_el.findall("worksheet"):
+            ws_name = ws.get("name", "")
+            for f_el in ws.findall(".//filter"):
+                item = _extract_filter(f_el, ws_name)
+                if item:
+                    filters.append(item)
+
+    # データソースレベルのフィルター
+    if datasources_el:
+        for ds in datasources_el.findall("datasource"):
+            ds_cap = ds_caption_map.get(ds.get("name", ""), ds.get("name", ""))
+            for f_el in ds.findall(".//filter"):
+                item = _extract_filter(f_el, "__datasource__")
+                if item:
+                    item["datasource"] = ds_cap
+                    filters.append(item)
+
+    return filters
+
+
+def _parse_twb_sheets(twb_content: str) -> list[dict]:
+    """TWB XML からワークシート・ダッシュボード・ストーリーの一覧を返す"""
+    root = DET.fromstring(twb_content)
+    sheets: list[dict] = []
+
+    for ws in root.findall(".//worksheets/worksheet"):
+        sheets.append({"name": ws.get("name", ""), "type": "worksheet"})
+    for db in root.findall(".//dashboards/dashboard"):
+        sheets.append({"name": db.get("name", ""), "type": "dashboard"})
+    for st in root.findall(".//stories/story"):
+        sheets.append({"name": st.get("name", ""), "type": "story"})
+
+    return sheets
+
+
+def _parse_twb_all(twb_content: str) -> dict:
+    """TWB XML を一括パースして fields / filters / sheets / datasource_info を返す"""
+    base = _parse_twb_fields(twb_content)
+    return {
+        **base,
+        "filters": _parse_twb_filters(twb_content),
+        "sheets":  _parse_twb_sheets(twb_content),
+    }
+
+
+def _compute_revision_diff(base: dict, head: dict) -> dict:
+    """2つのパース済み TWB の差分を計算する"""
+
+    def _diff_list(base_items: list, head_items: list, key_fn) -> dict:
+        base_map = {key_fn(i): i for i in base_items}
+        head_map = {key_fn(i): i for i in head_items}
+        added   = [head_map[k] for k in head_map if k not in base_map]
+        deleted = [base_map[k] for k in base_map if k not in head_map]
+        changed = []
+        for k in base_map:
+            if k in head_map and base_map[k] != head_map[k]:
+                changed.append({"key": k, "base": base_map[k], "head": head_map[k]})
+        return {"added": added, "deleted": deleted, "changed": changed}
+
+    # 計算フィールド
+    calc_diff = _diff_list(
+        base.get("fields", []), head.get("fields", []),
+        lambda f: f"{f['datasource']}::{f['field']}",
+    )
+    # changed の場合は old/new formula を分かりやすく整形
+    calc_changed = []
+    for c in calc_diff["changed"]:
+        calc_changed.append({
+            "datasource":  c["base"]["datasource"],
+            "field":       c["base"]["field"],
+            "old_formula": c["base"]["formula"],
+            "new_formula": c["head"]["formula"],
+        })
+    calc_diff["changed"] = calc_changed
+
+    # フィルター
+    filter_diff = _diff_list(
+        base.get("filters", []), head.get("filters", []),
+        lambda f: f"{f['sheet']}::{f['datasource']}::{f['field']}::{f['type']}",
+    )
+    filter_changed = []
+    for c in filter_diff["changed"]:
+        filter_changed.append({
+            "sheet":       c["base"]["sheet"],
+            "datasource":  c["base"]["datasource"],
+            "field":       c["base"]["field"],
+            "type":        c["base"]["type"],
+            "old_detail":  c["base"]["detail"],
+            "new_detail":  c["head"]["detail"],
+        })
+    filter_diff["changed"] = filter_changed
+
+    # データソース
+    ds_diff = _diff_list(
+        base.get("datasource_info", []), head.get("datasource_info", []),
+        lambda d: d["name"],
+    )
+    ds_changed = []
+    for c in ds_diff["changed"]:
+        ds_changed.append({
+            "name":            c["base"]["name"],
+            "old_connections": c["base"]["connections"],
+            "new_connections": c["head"]["connections"],
+        })
+    ds_diff["changed"] = ds_changed
+
+    # シート
+    sheet_diff = _diff_list(
+        base.get("sheets", []), head.get("sheets", []),
+        lambda s: f"{s['type']}::{s['name']}",
+    )
+
+    return {
+        "calculated_fields": calc_diff,
+        "filters":           filter_diff,
+        "datasources":       ds_diff,
+        "sheets":            sheet_diff,
+    }
+
+
+def fetch_workbook_revisions(workbook_id: str) -> dict:
+    """ワークブックのリビジョン一覧を返す"""
+    server, auth = _make_server()
+    with server.auth.sign_in(auth):
+        try:
+            wb_item = server.workbooks.get_by_id(workbook_id)
+            server.workbooks.populate_revisions(wb_item)
+            revisions = []
+            for rev in sorted(wb_item.revisions, key=lambda r: r.revision_number, reverse=True):
+                revisions.append({
+                    "revision_number": rev.revision_number,
+                    "created_at":      _fmt(getattr(rev, "_created_at", None)),
+                    "publisher":       getattr(rev, "_user_name", "") or "",
+                    "is_current":      bool(getattr(rev, "_current", False)),
+                })
+            return {"workbook_id": workbook_id, "revisions": revisions}
+        except Exception as exc:
+            raise ValueError(f"リビジョン一覧の取得に失敗しました: {exc}") from exc
+
+
+def fetch_workbook_revision_diff(workbook_id: str, base_rev: int | None = None, head_rev: int | None = None) -> dict:
+    """2つのリビジョンをダウンロードして差分を返す。省略時は最新 vs 1つ前。"""
+    server, auth = _make_server()
+    with server.auth.sign_in(auth):
+        # リビジョン一覧取得
+        wb_item = server.workbooks.get_by_id(workbook_id)
+        server.workbooks.populate_revisions(wb_item)
+        revs = sorted(wb_item.revisions, key=lambda r: r.revision_number, reverse=True)
+
+        if len(revs) < 2:
+            raise ValueError("比較できるリビジョンが2つ以上ありません。")
+
+        if head_rev is None:
+            head_rev = revs[0].revision_number
+        if base_rev is None:
+            base_rev = revs[1].revision_number
+
+        rev_meta = {r.revision_number: r for r in revs}
+
+        # current リビジョンの番号を特定
+        current_rev_num = next(
+            (r.revision_number for r in revs if getattr(r, "_current", False)), None
+        )
+
+        def _download_rev(rev_num: int) -> str:
+            """リビジョン番号を指定して TWB コンテンツを返す。
+            current リビジョンは revision API が 400 を返すため通常の download を使用。"""
+            import pathlib
+            with tempfile.TemporaryDirectory() as tmpdir:
+                if str(rev_num) == str(current_rev_num):
+                    # current は通常の download エンドポイントで取得
+                    file_path = server.workbooks.download(workbook_id, filepath=tmpdir)
+                else:
+                    url = (
+                        f"{server.workbooks.baseurl}/{workbook_id}"
+                        f"/revisions/{rev_num}/content"
+                    )
+                    resp = server.workbooks.get_request(url)
+                    tmp_path = pathlib.Path(tmpdir) / f"rev_{rev_num}.twbx"
+                    tmp_path.write_bytes(resp.content)
+                    file_path = str(tmp_path)
+                content = _extract_twb_content(file_path)
+                if not content:
+                    raise ValueError(f"リビジョン {rev_num} のTWB抽出に失敗しました")
+                return content
+
+        base_content = _download_rev(base_rev)
+        head_content = _download_rev(head_rev)
+
+        base_parsed = _parse_twb_all(base_content)
+        head_parsed = _parse_twb_all(head_content)
+        diff        = _compute_revision_diff(base_parsed, head_parsed)
+
+        def _rev_info(rev_num: int) -> dict:
+            # revision_number は文字列で返ってくる場合があるため str で検索
+            r = rev_meta.get(rev_num) or rev_meta.get(str(rev_num))
+            if r is None:
+                return {"revision_number": rev_num, "created_at": None, "publisher": ""}
+            return {
+                "revision_number": r.revision_number,
+                "created_at":      _fmt(getattr(r, "_created_at", None)),
+                "publisher":       getattr(r, "_user_name", "") or "",
+            }
+
+        return {
+            "workbook_id":   workbook_id,
+            "workbook_name": wb_item.name,
+            "base_revision": _rev_info(base_rev),
+            "head_revision": _rev_info(head_rev),
+            "diff":          diff,
+        }

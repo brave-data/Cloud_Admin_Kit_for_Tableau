@@ -753,13 +753,48 @@
 
     <!-- ── 差分比較タブ ─────────────────────────── -->
     <div class="tab-pane fade" id="tab-diff">
-      <div class="card border-0 shadow-sm p-3">
+      <!-- スナップショット差分 -->
+      <div class="card border-0 shadow-sm p-3 mb-3">
         <div id="diff-content">
           <!-- JS で動的に生成 -->
           <div class="diff-no-data">
             <i class="bi bi-git fs-1 d-block mb-3 opacity-25"></i>
             <div data-i18n="diff_no_snapshot_hint">更新ボタンを押すと、次回以降に差分を確認できます。</div>
           </div>
+        </div>
+      </div>
+
+      <!-- リビジョン差分 -->
+      <div class="card border-0 shadow-sm p-3">
+        <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-primary"></i><span data-i18n="rev_diff_title">リビジョン差分比較</span></h6>
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-md-5">
+            <label class="form-label small text-muted mb-1" data-i18n="rev_diff_wb_label">ワークブックを選択</label>
+            <select id="rev-wb-select" class="form-select form-select-sm" onchange="onRevWbChange()">
+              <option value="" data-i18n="rev_diff_wb_placeholder">— ワークブックを選択 —</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1" data-i18n="rev_diff_base_label">比較元</label>
+            <select id="rev-base-select" class="form-select form-select-sm" disabled>
+              <option value="">—</option>
+            </select>
+          </div>
+          <div class="col-auto d-flex align-items-end pb-1"><i class="bi bi-arrow-right text-muted"></i></div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1" data-i18n="rev_diff_head_label">比較先</label>
+            <select id="rev-head-select" class="form-select form-select-sm" disabled>
+              <option value="">—</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button id="rev-diff-btn" class="btn btn-sm btn-primary w-100" onclick="runRevisionDiff()" disabled>
+              <i class="bi bi-search me-1"></i><span data-i18n="rev_diff_run">比較を実行</span>
+            </button>
+          </div>
+        </div>
+        <div id="rev-diff-content">
+          <div class="text-muted small text-center py-3" data-i18n="rev_diff_hint">ワークブックを選択して比較を実行してください</div>
         </div>
       </div>
     </div>
@@ -996,6 +1031,17 @@ const I18N = {
     diff_cat_wb: 'ワークブック', diff_cat_wb_content: 'ワークブック（シート変更）',
     diff_cat_ktw: '計算フィールド [KTW監視]',
     diff_cat_ds: 'データソース', diff_cat_flow: 'Prepフロー', diff_cat_user: 'ユーザー',
+    rev_diff_title: 'リビジョン差分比較', rev_diff_wb_label: 'ワークブックを選択',
+    rev_diff_wb_placeholder: '— ワークブックを選択 —', rev_diff_base_label: '比較元',
+    rev_diff_head_label: '比較先', rev_diff_run: '比較を実行',
+    rev_diff_hint: 'ワークブックを選択して比較を実行してください',
+    rev_diff_loading: 'リビジョンを取得中...', rev_diff_comparing: '差分を計算中...',
+    rev_diff_calc_fields: '計算フィールド', rev_diff_filters: 'フィルター',
+    rev_diff_datasources: 'データソース', rev_diff_sheets: 'シート構成',
+    rev_diff_added: '追加', rev_diff_deleted: '削除', rev_diff_changed: '変更',
+    rev_diff_no_change: '変更なし', rev_diff_formula_old: '変更前', rev_diff_formula_new: '変更後',
+    rev_diff_filter_detail: '詳細', rev_diff_context: 'コンテキスト', rev_diff_ds_filter: 'DSフィルター',
+    rev_diff_sheet: 'シート', rev_diff_field: 'フィールド', rev_diff_type: '種別',
     diff_no_changes: '変更なし',
     diff_item_name_changed: '名前変更',
     diff_item_updated: '最終更新日が変わりました',
@@ -1081,6 +1127,17 @@ const I18N = {
     diff_cat_wb: 'Workbooks', diff_cat_wb_content: 'Workbooks (Sheet Changes)',
     diff_cat_ktw: 'Calc Fields [KTW Watch]',
     diff_cat_ds: 'Data Sources', diff_cat_flow: 'Prep Flows', diff_cat_user: 'Users',
+    rev_diff_title: 'Revision Diff', rev_diff_wb_label: 'Select Workbook',
+    rev_diff_wb_placeholder: '— Select Workbook —', rev_diff_base_label: 'Base',
+    rev_diff_head_label: 'Head', rev_diff_run: 'Compare',
+    rev_diff_hint: 'Select a workbook and click Compare',
+    rev_diff_loading: 'Loading revisions...', rev_diff_comparing: 'Computing diff...',
+    rev_diff_calc_fields: 'Calculated Fields', rev_diff_filters: 'Filters',
+    rev_diff_datasources: 'Data Sources', rev_diff_sheets: 'Sheets',
+    rev_diff_added: 'Added', rev_diff_deleted: 'Deleted', rev_diff_changed: 'Changed',
+    rev_diff_no_change: 'No changes', rev_diff_formula_old: 'Before', rev_diff_formula_new: 'After',
+    rev_diff_filter_detail: 'Detail', rev_diff_context: 'Context', rev_diff_ds_filter: 'DS Filter',
+    rev_diff_sheet: 'Sheet', rev_diff_field: 'Field', rev_diff_type: 'Type',
     diff_no_changes: 'No changes',
     diff_item_name_changed: 'Name changed',
     diff_item_updated: 'Updated at changed',
@@ -2335,6 +2392,7 @@ async function loadAll() {
     renderSummary(summary);
     renderWorkbooks(wb);
     populateWbDropdown(wb);   // 計算フィールド分析タブのドロップダウンを更新
+    populateRevWbDropdown(wb); // リビジョン差分タブのドロップダウンを更新
 
     renderDatasources(ds);
     renderViews(views);
@@ -3130,6 +3188,211 @@ function openFullAnalysis(wbId) {
   } else {
     analyzeWorkbook();
   }
+}
+
+// ─────────────────────────────────────────────────────
+// リビジョン差分比較
+// ─────────────────────────────────────────────────────
+
+/** ワークブック選択ドロップダウンをリビジョン用にも充填する */
+function populateRevWbDropdown(workbooks) {
+  const sel = document.getElementById('rev-wb-select');
+  if (!sel) return;
+  const t = I18N[window._lang || 'ja'];
+  sel.innerHTML = `<option value="">${t.rev_diff_wb_placeholder}</option>` +
+    workbooks.map(wb => `<option value="${esc(wb.id)}">${esc(wb.name)}${wb.project ? ' (' + esc(wb.project) + ')' : ''}</option>`).join('');
+}
+
+/** ワークブック選択時にリビジョン一覧を取得してドロップダウンを更新 */
+async function onRevWbChange() {
+  const wbId = document.getElementById('rev-wb-select').value;
+  const baseEl = document.getElementById('rev-base-select');
+  const headEl = document.getElementById('rev-head-select');
+  const btn    = document.getElementById('rev-diff-btn');
+  const t = I18N[window._lang || 'ja'];
+
+  baseEl.innerHTML = '<option value="">—</option>';
+  headEl.innerHTML = '<option value="">—</option>';
+  baseEl.disabled = true;
+  headEl.disabled = true;
+  btn.disabled = true;
+
+  if (!wbId) return;
+
+  document.getElementById('rev-diff-content').innerHTML =
+    `<div class="text-muted small text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span>${t.rev_diff_loading}</div>`;
+
+  try {
+    const data = await fetchJSON(`/api/workbooks/${wbId}/revisions`);
+    const revs = data.revisions || [];
+    if (revs.length < 2) {
+      document.getElementById('rev-diff-content').innerHTML =
+        `<div class="text-muted small text-center py-3">比較できるリビジョンが2件以上ありません</div>`;
+      return;
+    }
+    const opts = revs.map(r => {
+      const dt = r.created_at ? new Date(r.created_at).toLocaleString() : '';
+      const cur = r.is_current ? ' ★' : '';
+      return `<option value="${r.revision_number}">v${r.revision_number}${cur} — ${dt}${r.publisher ? ' (' + esc(r.publisher) + ')' : ''}</option>`;
+    }).join('');
+    baseEl.innerHTML = opts;
+    headEl.innerHTML = opts;
+    // デフォルト: head=最新, base=1つ前
+    headEl.value = revs[0].revision_number;
+    baseEl.value = revs[1].revision_number;
+    baseEl.disabled = false;
+    headEl.disabled = false;
+    btn.disabled = false;
+    document.getElementById('rev-diff-content').innerHTML =
+      `<div class="text-muted small text-center py-3">${t.rev_diff_hint}</div>`;
+  } catch(e) {
+    document.getElementById('rev-diff-content').innerHTML =
+      `<div class="text-danger small text-center py-3">リビジョン取得失敗: ${esc(String(e))}</div>`;
+  }
+}
+
+/** 差分を実行して結果を表示する */
+async function runRevisionDiff() {
+  const wbId   = document.getElementById('rev-wb-select').value;
+  const baseRev = document.getElementById('rev-base-select').value;
+  const headRev = document.getElementById('rev-head-select').value;
+  const btn    = document.getElementById('rev-diff-btn');
+  const t = I18N[window._lang || 'ja'];
+  if (!wbId) return;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${t.rev_diff_comparing}`;
+  document.getElementById('rev-diff-content').innerHTML =
+    `<div class="text-muted small text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span>${t.rev_diff_comparing}</div>`;
+
+  try {
+    const params = new URLSearchParams();
+    if (baseRev) params.set('base', baseRev);
+    if (headRev) params.set('head', headRev);
+    const data = await fetchJSON(`/api/workbooks/${wbId}/revision-diff?${params}`);
+    renderRevisionDiff(data);
+  } catch(e) {
+    document.getElementById('rev-diff-content').innerHTML =
+      `<div class="text-danger small text-center py-3">差分取得失敗: ${esc(String(e))}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="bi bi-search me-1"></i>${t.rev_diff_run}`;
+  }
+}
+
+/** 差分結果をHTMLでレンダリング */
+function renderRevisionDiff(data) {
+  const t    = I18N[window._lang || 'ja'];
+  const diff = data.diff || {};
+  const br   = data.base_revision || {};
+  const hr   = data.head_revision || {};
+
+  const fmtRev = r => {
+    const dt = r.created_at ? new Date(r.created_at).toLocaleString() : '';
+    return `v${r.revision_number}${dt ? ' (' + dt + ')' : ''}${r.publisher ? ' — ' + esc(r.publisher) : ''}`;
+  };
+
+  const header = `
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+      <span class="badge bg-secondary">${fmtRev(br)}</span>
+      <i class="bi bi-arrow-right text-muted"></i>
+      <span class="badge bg-primary">${fmtRev(hr)}</span>
+      <span class="fw-semibold">${esc(data.workbook_name || '')}</span>
+    </div>`;
+
+  const sections = [
+    { key: 'calculated_fields', label: t.rev_diff_calc_fields, icon: 'bi-calculator-fill' },
+    { key: 'filters',           label: t.rev_diff_filters,      icon: 'bi-funnel-fill' },
+    { key: 'datasources',       label: t.rev_diff_datasources,  icon: 'bi-database-fill' },
+    { key: 'sheets',            label: t.rev_diff_sheets,       icon: 'bi-layout-text-window' },
+  ];
+
+  let html = header;
+
+  for (const sec of sections) {
+    const d = diff[sec.key] || { added: [], deleted: [], changed: [] };
+    const totalAdd = d.added.length, totalDel = d.deleted.length, totalChg = d.changed.length;
+    const total = totalAdd + totalDel + totalChg;
+
+    const badges = [
+      totalAdd ? `<span class="diff-stat-badge new ms-2">+${totalAdd} ${t.rev_diff_added}</span>` : '',
+      totalDel ? `<span class="diff-stat-badge deleted ms-1">-${totalDel} ${t.rev_diff_deleted}</span>` : '',
+      totalChg ? `<span class="diff-stat-badge changed ms-1">~${totalChg} ${t.rev_diff_changed}</span>` : '',
+    ].join('');
+
+    const noChange = total === 0
+      ? `<span class="text-muted small ms-2">${t.rev_diff_no_change}</span>` : '';
+
+    html += `<div class="diff-section${total === 0 ? '' : ' changed-section'} mb-2">
+      <div class="diff-section-header d-flex align-items-center p-2 rounded" onclick="this.classList.toggle('collapsed');this.nextElementSibling.style.display=this.classList.contains('collapsed')?'none':''">
+        <i class="bi ${sec.icon} me-2"></i>
+        <span class="fw-semibold">${sec.label}</span>
+        ${badges}${noChange}
+        <i class="bi bi-chevron-down diff-section-chevron ms-auto"></i>
+      </div>
+      <div class="diff-section-body p-2" style="${total === 0 ? 'display:none' : ''}">`;
+
+    // 追加
+    if (d.added.length > 0) {
+      html += `<div class="fw-semibold text-success small mb-1">+ ${t.rev_diff_added}</div>`;
+      html += d.added.map(item => `<div class="diff-item new-section p-2 mb-1 rounded small">${_revItemHtml(item, sec.key)}</div>`).join('');
+    }
+    // 削除
+    if (d.deleted.length > 0) {
+      html += `<div class="fw-semibold text-danger small mb-1 mt-2">- ${t.rev_diff_deleted}</div>`;
+      html += d.deleted.map(item => `<div class="diff-item deleted-section p-2 mb-1 rounded small">${_revItemHtml(item, sec.key)}</div>`).join('');
+    }
+    // 変更
+    if (d.changed.length > 0) {
+      html += `<div class="fw-semibold text-warning small mb-1 mt-2">~ ${t.rev_diff_changed}</div>`;
+      html += d.changed.map(item => `<div class="diff-item changed-section p-2 mb-1 rounded small">${_revChangedHtml(item, sec.key)}</div>`).join('');
+    }
+
+    html += `</div></div>`;
+  }
+
+  document.getElementById('rev-diff-content').innerHTML = html;
+}
+
+function _revItemHtml(item, key) {
+  const t = I18N[window._lang || 'ja'];
+  if (key === 'calculated_fields') {
+    return `<span class="fw-semibold">${esc(item.field)}</span> <small class="text-muted">${esc(item.datasource)}</small><br><code class="small">${esc(item.formula || '')}</code>`;
+  }
+  if (key === 'filters') {
+    const ctx = item.is_context ? ` <span class="badge bg-warning text-dark" style="font-size:.65rem">${t.rev_diff_context}</span>` : '';
+    const dsf = item.is_datasource_filter ? ` <span class="badge bg-info text-dark" style="font-size:.65rem">${t.rev_diff_ds_filter}</span>` : '';
+    return `<span class="fw-semibold">${esc(item.field)}</span>${ctx}${dsf} <small class="text-muted">${esc(item.datasource)} / ${esc(item.sheet === '__datasource__' ? 'DS' : item.sheet)}</small> <span class="badge bg-secondary" style="font-size:.65rem">${esc(item.type)}</span>`;
+  }
+  if (key === 'datasources') {
+    return `<span class="fw-semibold">${esc(item.name)}</span>`;
+  }
+  if (key === 'sheets') {
+    return `<span class="fw-semibold">${esc(item.name)}</span> <small class="text-muted">${esc(item.type)}</small>`;
+  }
+  return esc(JSON.stringify(item));
+}
+
+function _revChangedHtml(item, key) {
+  const t = I18N[window._lang || 'ja'];
+  if (key === 'calculated_fields') {
+    return `<span class="fw-semibold">${esc(item.field)}</span> <small class="text-muted">${esc(item.datasource)}</small>
+      <div class="mt-1"><span class="text-danger small">${t.rev_diff_formula_old}:</span><pre class="mb-0 p-1 rounded" style="background:rgba(255,0,0,.05);font-size:.78rem">${esc(item.old_formula || '')}</pre></div>
+      <div class="mt-1"><span class="text-success small">${t.rev_diff_formula_new}:</span><pre class="mb-0 p-1 rounded" style="background:rgba(0,180,0,.05);font-size:.78rem">${esc(item.new_formula || '')}</pre></div>`;
+  }
+  if (key === 'filters') {
+    return `<span class="fw-semibold">${esc(item.field)}</span> <small class="text-muted">${esc(item.datasource)} / ${esc(item.sheet === '__datasource__' ? 'DS' : item.sheet)}</small>
+      <div class="mt-1 d-flex gap-2 flex-wrap">
+        <div><span class="text-danger small">${t.rev_diff_formula_old}:</span><br><code class="small">${esc(JSON.stringify(item.old_detail))}</code></div>
+        <div><span class="text-success small">${t.rev_diff_formula_new}:</span><br><code class="small">${esc(JSON.stringify(item.new_detail))}</code></div>
+      </div>`;
+  }
+  if (key === 'datasources') {
+    return `<span class="fw-semibold">${esc(item.name)}</span>
+      <div class="mt-1"><span class="text-danger small">${t.rev_diff_formula_old}:</span> <code class="small">${esc(JSON.stringify(item.old_connections))}</code></div>
+      <div><span class="text-success small">${t.rev_diff_formula_new}:</span> <code class="small">${esc(JSON.stringify(item.new_connections))}</code></div>`;
+  }
+  return _revItemHtml(item.head || item, key);
 }
 </script>
 </body>
