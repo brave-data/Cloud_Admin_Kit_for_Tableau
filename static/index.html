@@ -385,6 +385,10 @@
   .diff-empty { text-align: center; padding: 32px 0; color: var(--text-muted2); }
   /* 差分タブ未準備状態 */
   .diff-no-data { text-align: center; padding: 48px 16px; color: var(--text-muted2); }
+  /* リビジョン差分: ワークブック検索ドロップダウン */
+  #rev-wb-dropdown { background: var(--card-bg, #fff); border-color: var(--border-color, #dee2e6); }
+  [data-theme="dark"] #rev-wb-dropdown { background: #1e2d3d; border-color: #334;  color: #cfe2ff; }
+  [data-theme="dark"] .rev-wb-item:hover { background: #243448 !important; }
 </style>
 </head>
 <body>
@@ -770,9 +774,16 @@
         <div class="row g-2 align-items-end mb-3">
           <div class="col-md-5">
             <label class="form-label small text-muted mb-1" data-i18n="rev_diff_wb_label">ワークブックを選択</label>
-            <select id="rev-wb-select" class="form-select form-select-sm" onchange="onRevWbChange()">
-              <option value="" data-i18n="rev_diff_wb_placeholder">— ワークブックを選択 —</option>
-            </select>
+            <div class="position-relative" id="rev-wb-wrap">
+              <input type="text" id="rev-wb-input" class="form-control form-control-sm" autocomplete="off"
+                     placeholder="— ワークブックを検索 —"
+                     oninput="filterRevWbDropdown(this.value)"
+                     onfocus="showRevWbDropdown()" />
+              <div id="rev-wb-dropdown"
+                   style="display:none;position:absolute;z-index:1050;width:100%;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #dee2e6;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.1);">
+              </div>
+              <input type="hidden" id="rev-wb-value" />
+            </div>
           </div>
           <div class="col-md-2">
             <label class="form-label small text-muted mb-1" data-i18n="rev_diff_base_label">比較元</label>
@@ -3194,18 +3205,82 @@ function openFullAnalysis(wbId) {
 // リビジョン差分比較
 // ─────────────────────────────────────────────────────
 
-/** ワークブック選択ドロップダウンをリビジョン用にも充填する */
+// リビジョン差分: 検索ドロップダウン用データ
+let _revWbList = [];
+
+/** ワークブック一覧をリビジョン用検索ドロップダウンに充填する */
 function populateRevWbDropdown(workbooks) {
-  const sel = document.getElementById('rev-wb-select');
-  if (!sel) return;
-  const t = I18N[window._lang || 'ja'];
-  sel.innerHTML = `<option value="">${t.rev_diff_wb_placeholder}</option>` +
-    workbooks.map(wb => `<option value="${esc(wb.id)}">${esc(wb.name)}${wb.project ? ' (' + esc(wb.project) + ')' : ''}</option>`).join('');
+  _revWbList = workbooks.map(wb => ({
+    id: wb.id,
+    label: wb.name + (wb.project ? ' (' + wb.project + ')' : ''),
+  }));
+  // 入力欄をリセット
+  const inp = document.getElementById('rev-wb-input');
+  const val = document.getElementById('rev-wb-value');
+  if (inp) inp.value = '';
+  if (val) val.value = '';
 }
+
+/** 入力テキストでワークブック一覧をフィルタリングして候補を表示する */
+function filterRevWbDropdown(query) {
+  const q = (query || '').toLowerCase();
+  const filtered = q
+    ? _revWbList.filter(wb => wb.label.toLowerCase().includes(q))
+    : _revWbList;
+  _renderRevWbDropdown(filtered);
+  const dd = document.getElementById('rev-wb-dropdown');
+  if (dd) dd.style.display = filtered.length ? 'block' : 'none';
+  // 入力が変わったら選択済みの値をクリア
+  const val = document.getElementById('rev-wb-value');
+  if (val) val.value = '';
+}
+
+/** フォーカス時: 全件ドロップダウンを表示 */
+function showRevWbDropdown() {
+  const q = (document.getElementById('rev-wb-input') || {}).value || '';
+  filterRevWbDropdown(q);
+}
+
+/** ドロップダウンのアイテムを描画する */
+function _renderRevWbDropdown(list) {
+  const dd = document.getElementById('rev-wb-dropdown');
+  if (!dd) return;
+  if (!list.length) {
+    dd.innerHTML = '<div class="px-3 py-2 text-muted small">見つかりません</div>';
+    dd.style.display = 'block';
+    return;
+  }
+  dd.innerHTML = list.map(wb =>
+    `<div class="px-3 py-2 rev-wb-item" style="cursor:pointer;font-size:.85rem;"
+          onmousedown="selectRevWb('${esc(wb.id)}','${esc(wb.label)}')"
+          onmouseover="this.style.background='#f0f4ff'"
+          onmouseout="this.style.background=''">${esc(wb.label)}</div>`
+  ).join('');
+}
+
+/** ワークブックを選択して差分コントロールを更新する */
+function selectRevWb(id, label) {
+  const inp = document.getElementById('rev-wb-input');
+  const val = document.getElementById('rev-wb-value');
+  const dd  = document.getElementById('rev-wb-dropdown');
+  if (inp) inp.value = label;
+  if (val) val.value = id;
+  if (dd)  dd.style.display = 'none';
+  onRevWbChange();
+}
+
+// ドロップダウン外クリックで閉じる
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('rev-wb-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const dd = document.getElementById('rev-wb-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
 
 /** ワークブック選択時にリビジョン一覧を取得してドロップダウンを更新 */
 async function onRevWbChange() {
-  const wbId = document.getElementById('rev-wb-select').value;
+  const wbId = (document.getElementById('rev-wb-value') || {}).value;
   const baseEl = document.getElementById('rev-base-select');
   const headEl = document.getElementById('rev-head-select');
   const btn    = document.getElementById('rev-diff-btn');
@@ -3253,7 +3328,7 @@ async function onRevWbChange() {
 
 /** 差分を実行して結果を表示する */
 async function runRevisionDiff() {
-  const wbId   = document.getElementById('rev-wb-select').value;
+  const wbId   = (document.getElementById('rev-wb-value') || {}).value;
   const baseRev = document.getElementById('rev-base-select').value;
   const headRev = document.getElementById('rev-head-select').value;
   const btn    = document.getElementById('rev-diff-btn');
