@@ -6,3 +6,4 @@ uvicorn[standard]>=0.30.0
 tableauserverclient>=0.30.0
 python-dotenv>=1.0.0
 defusedxml>=0.7.1
+apscheduler>=3.10.0
