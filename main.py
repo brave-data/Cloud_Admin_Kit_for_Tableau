@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
@@ -97,18 +98,36 @@ def _do_fetch():
 # ---------------------------------------------------------------------------
 # アプリ起動
 # ---------------------------------------------------------------------------
+def _scheduled_fetch():
+    """スケジューラから呼ばれる定期取得（loading 中は skip）"""
+    with _lock:
+        if _cache["status"] == "loading":
+            return
+    _do_fetch()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 起動時にバックグラウンドフェッチ開始
     t = threading.Thread(target=_do_fetch, daemon=True)
     t.start()
+
+    # 定期自動更新スケジューラ起動
+    # REFRESH_INTERVAL_MINUTES: デフォルト 30 分（.env で変更可能）
+    interval_min = int(os.getenv("REFRESH_INTERVAL_MINUTES", "30"))
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(_scheduled_fetch, "interval", minutes=interval_min)
+    scheduler.start()
+
     yield
+
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(
     title="Cloud Admin Kit for Tableau",
     description="Tableau Cloud の管理情報をブラウザで確認・更新するローカルツール",
-    version="1.5.4",
+    version="1.6.0",
     lifespan=lifespan,
 )
 
@@ -138,11 +157,12 @@ async def get_status():
     """接続状態とキャッシュの状態を返す"""
     with _lock:
         return {
-            "status":          _cache["status"],
-            "error":           _cache["error"],
-            "fetched_at":      _cache["fetched_at"],
-            "version":         app.version,
-            "fetch_warnings":  _cache["fetch_warnings"],
+            "status":                  _cache["status"],
+            "error":                   _cache["error"],
+            "fetched_at":              _cache["fetched_at"],
+            "version":                 app.version,
+            "fetch_warnings":          _cache["fetch_warnings"],
+            "refresh_interval_minutes": int(os.getenv("REFRESH_INTERVAL_MINUTES", "30")),
         }
 
 
