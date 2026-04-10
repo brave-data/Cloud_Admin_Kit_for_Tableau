@@ -127,7 +127,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Cloud Admin Kit for Tableau",
     description="Tableau Cloud の管理情報をブラウザで確認・更新するローカルツール",
-    version="1.6.0",
+    version="1.7.0",
     lifespan=lifespan,
 )
 
@@ -256,6 +256,36 @@ async def get_ktw_fields():
 
     results = await asyncio.gather(*[scan_one(wb) for wb in ktw_wbs])
     return list(results)
+
+
+@app.get("/api/workbooks/{workbook_id}/revisions")
+async def get_workbook_revisions(workbook_id: str):
+    """ワークブックのリビジョン一覧を返す"""
+    from tableau_client import fetch_workbook_revisions
+    try:
+        return await asyncio.to_thread(fetch_workbook_revisions, workbook_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/workbooks/{workbook_id}/revision-diff")
+async def get_workbook_revision_diff(
+    workbook_id: str,
+    base: int | None = None,
+    head: int | None = None,
+):
+    """2リビジョン間の差分を返す。base/head 省略時は最新 vs 1つ前。"""
+    cache_key = f"{workbook_id}:{base}:{head}"
+    if cache_key in _field_cache:
+        return _field_cache[cache_key]
+
+    from tableau_client import fetch_workbook_revision_diff
+    try:
+        result = await asyncio.to_thread(fetch_workbook_revision_diff, workbook_id, base, head)
+        _field_cache[cache_key] = result
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/workbooks/{workbook_id}/fields")
