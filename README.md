@@ -89,7 +89,22 @@ Keep data fresh by monitoring all extract refresh schedules.
 
 ---
 
-### 6. Calculated Field Dependency Analysis
+### 6. Workbook Revision Diff Comparison
+
+Compare any two revisions of a workbook side-by-side to pinpoint exactly what changed.
+
+- Select a workbook and choose **Base** and **Head** revision numbers
+- See **added / deleted / changed** for:
+  - **Calculated fields** — field name, datasource, and old vs. new formula for changes
+  - **Filters** — categorical, quantitative, relative-date, and top-N filters
+  - **Connected datasources** — datasource additions and removals
+  - **Sheets** — worksheet, dashboard, and story additions and removals
+- Results are cached per revision pair — instant on second view
+- Catch unauthorized formula edits by comparing the current revision against the previous one
+
+---
+
+### 7. Calculated Field Dependency Analysis
 
 ![Calculated Fields](docs/screenshots/04_fields.png)
 
@@ -100,7 +115,17 @@ Download and analyze a workbook's calculated fields, visualized as a Sankey depe
 
 ---
 
-### 7. Configurable Alert Thresholds
+### 8. Background Auto-Refresh
+
+The app automatically re-fetches data from Tableau Cloud in the background at a configurable interval (default: **every 30 minutes**). The cache is updated without any user action — the UI always shows near-current data.
+
+- Set `REFRESH_INTERVAL_MINUTES` in `.env` to adjust the interval (minimum 15 min recommended to stay within API rate limits)
+- The status bar shows the last fetched timestamp so you always know how fresh the data is
+- In-progress fetches are never duplicated — a new fetch is skipped if one is already running
+
+---
+
+### 9. Configurable Alert Thresholds
 
 Click the **⚙ Set Thresholds** card (bottom-right of the dashboard) to customize the alert day counts:
 
@@ -114,7 +139,7 @@ Thresholds are saved per-browser in `localStorage` and take effect immediately �
 
 ---
 
-### 8. Dark Mode & Bilingual UI
+### 10. Dark Mode & Bilingual UI
 
 ![Dark Mode](docs/screenshots/07_dark_mode.png)
 
@@ -165,6 +190,8 @@ Swagger UI is available at `http://localhost:8000/docs` while the app is running
 | `GET /api/schedules` | Refresh schedule list |
 | `GET /api/flows/{id}/connections` | Input/output connections for a Prep flow |
 | `GET /api/workbooks/{id}/fields` | Calculated field analysis for a workbook |
+| `GET /api/workbooks/{id}/revisions` | Revision history for a workbook |
+| `GET /api/workbooks/{id}/revision-diff` | Diff between two revisions (`?base=N&head=M`; omit for latest vs. previous) |
 | `GET /api/ktw-fields` | Calculated fields for all KTW-tagged workbooks (up to 10) |
 | `POST /api/refresh` | Trigger data re-fetch from Tableau Cloud |
 
@@ -193,6 +220,6 @@ Tableau_Cloud_Manager/
 
 ## Tech Stack
 
-- **Backend**: Python 3.11+, FastAPI, uvicorn, tableauserverclient
+- **Backend**: Python 3.11+, FastAPI, uvicorn, tableauserverclient, APScheduler
 - **Frontend**: Bootstrap 5.3, Bootstrap Icons, DataTables 1.13, D3.js (Sankey)
 - **Data persistence**: Browser `localStorage` for diff snapshots and alert thresholds
