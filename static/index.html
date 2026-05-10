@@ -219,6 +219,9 @@
   .bar-wrap { background:#e9ecef; border-radius:4px; height:12px; }
   .bar-fill  { background: var(--tc-mid); border-radius:4px; height:100%; transition:width .4s; }
 
+  /* Quick-filter bar */
+  .quick-filter-bar select { font-size: 0.8rem; max-width: 180px; }
+
   /* Responsive tweaks */
   @media(max-width:768px){ .stat-card .value { font-size:1.4rem; } }
 
@@ -565,6 +568,9 @@
     <li class="nav-item"><a class="nav-link" href="#" onclick="event.preventDefault();switchToSection('help')">
       <i class="bi bi-question-circle me-1"></i><span data-i18n="nav_help">使い方</span>
     </a></li>
+    <li class="nav-item"><a class="nav-link" href="#" onclick="event.preventDefault();switchToSection('useractivity')">
+      <i class="bi bi-person-lines-fill me-1"></i><span data-i18n="nav_useractivity">ユーザー別アクセス</span>
+    </a></li>
   </ul>
 
   <div class="tab-content">
@@ -574,6 +580,15 @@
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
           <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-wb','workbooks')"><i class="bi bi-download me-1"></i>CSV</button></div>
+          <div class="d-flex gap-2 flex-wrap mb-2 align-items-center quick-filter-bar" id="filter-wb">
+            <select class="form-select form-select-sm" id="qf-wb-project" onchange="applyQuickFilter('tbl-wb',1,this.value)">
+              <option value="">— プロジェクト —</option>
+            </select>
+            <select class="form-select form-select-sm" id="qf-wb-owner" onchange="applyQuickFilter('tbl-wb',2,this.value)">
+              <option value="">— オーナー —</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary py-0" onclick="resetQuickFilters('tbl-wb',['qf-wb-project','qf-wb-owner'])">リセット</button>
+          </div>
           <table id="tbl-wb" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_wb_name">ワークブック名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
@@ -590,10 +605,22 @@
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
           <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-ds','datasources')"><i class="bi bi-download me-1"></i>CSV</button></div>
+          <div class="d-flex gap-2 flex-wrap mb-2 align-items-center quick-filter-bar" id="filter-ds">
+            <select class="form-select form-select-sm" id="qf-ds-project" onchange="applyQuickFilter('tbl-ds',1,this.value)">
+              <option value="">— プロジェクト —</option>
+            </select>
+            <select class="form-select form-select-sm" id="qf-ds-owner" onchange="applyQuickFilter('tbl-ds',2,this.value)">
+              <option value="">— オーナー —</option>
+            </select>
+            <select class="form-select form-select-sm" id="qf-ds-kind" onchange="applyQuickFilter('tbl-ds',3,this.value)">
+              <option value="">— DS種別 —</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary py-0" onclick="resetQuickFilters('tbl-ds',['qf-ds-project','qf-ds-owner','qf-ds-kind'])">リセット</button>
+          </div>
           <table id="tbl-ds" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_ds_name">データソース名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
-              <th data-i18n="th_type">タイプ</th><th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_ref_count">参照数</th><th data-i18n="th_link">リンク</th>
+              <th data-i18n="th_ds_type">種別</th><th data-i18n="th_last_updated">最終更新</th><th data-i18n="th_days_stale">経過日数</th><th data-i18n="th_ref_count">参照数</th><th data-i18n="th_link">リンク</th>
             </tr></thead>
             <tbody id="body-ds"></tbody>
           </table>
@@ -603,9 +630,25 @@
 
     <!-- ── Views ─────────────────────────────────── -->
     <div class="tab-pane fade" id="tab-views">
+      <!-- 閲覧数ランキングカード -->
+      <div id="views-ranking-card" class="card border-0 shadow-sm mb-3 p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="fw-bold mb-0" style="color:var(--tc-mid)"><i class="bi bi-bar-chart-fill me-1"></i>閲覧数ランキング（上位20件）</h6>
+          <button class="btn btn-sm btn-outline-secondary py-0" onclick="toggleViewsRanking()">
+            <i class="bi bi-chevron-up" id="views-ranking-chevron"></i>
+          </button>
+        </div>
+        <div id="views-ranking-body"></div>
+      </div>
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
           <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-views','views')"><i class="bi bi-download me-1"></i>CSV</button></div>
+          <div class="d-flex gap-2 flex-wrap mb-2 align-items-center quick-filter-bar" id="filter-views">
+            <select class="form-select form-select-sm" id="qf-views-workbook" onchange="applyQuickFilter('tbl-views',1,this.value)">
+              <option value="">— ワークブック —</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary py-0" onclick="resetQuickFilters('tbl-views',['qf-views-workbook'])">リセット</button>
+          </div>
           <table id="tbl-views" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_view_name">ビュー名</th><th data-i18n="th_workbook">ワークブック</th><th data-i18n="th_owner">オーナー</th>
@@ -622,6 +665,12 @@
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
           <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-users','users')"><i class="bi bi-download me-1"></i>CSV</button></div>
+          <div class="d-flex gap-2 flex-wrap mb-2 align-items-center quick-filter-bar" id="filter-users">
+            <select class="form-select form-select-sm" id="qf-users-license" onchange="applyQuickFilter('tbl-users',2,this.value)">
+              <option value="">— ライセンス —</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary py-0" onclick="resetQuickFilters('tbl-users',['qf-users-license'])">リセット</button>
+          </div>
           <table id="tbl-users" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_name">名前</th><th data-i18n="th_email">メール</th><th data-i18n="th_license">ライセンス</th>
@@ -638,6 +687,12 @@
       <div class="card border-0 shadow-sm">
         <div class="card-body p-2">
           <div class="tbl-header-row"><span></span><button class="btn btn-sm btn-outline-secondary btn-csv" onclick="exportCSV('tbl-flows','flows')"><i class="bi bi-download me-1"></i>CSV</button></div>
+          <div class="d-flex gap-2 flex-wrap mb-2 align-items-center quick-filter-bar" id="filter-flows">
+            <select class="form-select form-select-sm" id="qf-flows-project" onchange="applyQuickFilter('tbl-flows',1,this.value)">
+              <option value="">— プロジェクト —</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary py-0" onclick="resetQuickFilters('tbl-flows',['qf-flows-project'])">リセット</button>
+          </div>
           <table id="tbl-flows" class="table table-sm table-hover w-100">
             <thead><tr>
               <th data-i18n="th_flow_name">フロー名</th><th data-i18n="th_project">プロジェクト</th><th data-i18n="th_owner">オーナー</th>
@@ -966,6 +1021,24 @@
       </div>
     </div>
 
+    <!-- ── ユーザー別アクセスタブ ─────────────── -->
+    <div class="tab-pane fade" id="tab-useractivity">
+      <div class="card border-0 shadow-sm p-3 mb-3">
+        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+          <h5 class="fw-bold mb-0" data-i18n="useractivity_title">ユーザー別アクセス</h5>
+          <button id="btn-load-useractivity" class="btn btn-sm btn-primary" onclick="loadUserActivity()">
+            <i class="bi bi-arrow-clockwise me-1"></i>読み込む
+          </button>
+        </div>
+        <div id="useractivity-result">
+          <div class="text-muted text-center py-4">
+            <i class="bi bi-person-lines-fill fs-1 d-block mb-2 opacity-25"></i>
+            「読み込む」ボタンを押してデータを取得してください
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- tab-content -->
 </div><!-- main-content -->
 
@@ -1037,6 +1110,9 @@ const I18N = {
     th_frequency: '頻度', th_next_run: '次回実行',
     nav_diff: '差分比較',
     nav_help: '使い方',
+    nav_useractivity: 'ユーザー別アクセス',
+    useractivity_title: 'ユーザー別アクセス',
+    th_ds_type: '種別',
     diff_no_snapshot_hint: '更新ボタンを押すと、次回以降に差分を確認できます。',
     diff_new_section: '🟢 新規追加', diff_changed_section: '🟡 更新', diff_deleted_section: '🔴 削除',
     diff_cat_wb: 'ワークブック', diff_cat_wb_content: 'ワークブック（シート変更）',
@@ -1133,6 +1209,9 @@ const I18N = {
     th_frequency: 'Frequency', th_next_run: 'Next Run',
     nav_diff: 'Changes',
     nav_help: 'Help',
+    nav_useractivity: 'User Activity',
+    useractivity_title: 'User Activity',
+    th_ds_type: 'Type / Kind',
     diff_no_snapshot_hint: 'Click Refresh to start tracking changes.',
     diff_new_section: '🟢 New', diff_changed_section: '🟡 Updated', diff_deleted_section: '🔴 Deleted',
     diff_cat_wb: 'Workbooks', diff_cat_wb_content: 'Workbooks (Sheet Changes)',
@@ -1820,13 +1899,13 @@ function switchToSection(section) {
 
   // navタブのアクティブ状態を同期
   document.querySelectorAll('#mainTab .nav-link').forEach(l => l.classList.remove('active'));
-  const NAV_SECTIONS = { schedules: 0, topviews: 1, fields: 2, diff: 3, help: 4 };
+  const NAV_SECTIONS = { schedules: 0, topviews: 1, fields: 2, diff: 3, help: 4, useractivity: 5 };
   if (section in NAV_SECTIONS) {
     document.querySelectorAll('#mainTab .nav-link')[NAV_SECTIONS[section]]?.classList.add('active');
   }
 
   // タブペインを直接 CSS クラスで切り替え（Bootstrap Tab API はナビ親要素が必要なため回避）
-  const ALL_PANES = ['wb', 'ds', 'views', 'users', 'flows', 'schedules', 'topviews', 'fields', 'diff', 'help', 'maintenance'];
+  const ALL_PANES = ['wb', 'ds', 'views', 'users', 'flows', 'schedules', 'topviews', 'fields', 'diff', 'help', 'maintenance', 'useractivity'];
   ALL_PANES.forEach(id => {
     const pane = document.getElementById('tab-' + id);
     if (!pane) return;
@@ -1960,6 +2039,8 @@ function renderWorkbooks(rows) {
   }).join('');
 
   _wbDt = initTable('tbl-wb', [[3, 'desc']]);
+  _populateFilterSelect('qf-wb-project', rows.map(r => r.project).filter(Boolean));
+  _populateFilterSelect('qf-wb-owner',   rows.map(r => r.owner).filter(Boolean));
 
   // Row click → expand inline detail panel
   $('#tbl-wb tbody').off('click.wb').on('click.wb', 'tr.wb-data-row', async function () {
@@ -2010,6 +2091,30 @@ function renderWorkbooks(rows) {
 let _dsDt = null;
 let _dsRows = {};
 
+function dsBadge(r) {
+  const kind = r.connection_kind || 'live';
+  const rawType = (r.type || '').toLowerCase();
+
+  const kindMap = {
+    extract: { label: 'エクストラクト', icon: 'bi-archive-fill',      bg: '#2e75b6', text: '#fff' },
+    live:    { label: 'ライブ接続',      icon: 'bi-lightning-fill',    bg: '#1a7a38', text: '#fff' },
+    file:    { label: 'ファイル',        icon: 'bi-file-earmark-fill', bg: '#7030a0', text: '#fff' },
+  };
+  const k = kindMap[kind] || kindMap.live;
+
+  const typeLabels = {
+    'hyper': 'Extract', 'sqlserver': 'SQL Server', 'postgres': 'PostgreSQL',
+    'postgresql': 'PostgreSQL', 'mysql': 'MySQL', 'oracle': 'Oracle',
+    'snowflake': 'Snowflake', 'bigquery': 'BigQuery', 'redshift': 'Redshift',
+    'databricks': 'Databricks', 'excel-direct': 'Excel', 'excel': 'Excel',
+    'text': 'CSV/Text', 'salesforce': 'Salesforce', 'google-analytics': 'Google Analytics',
+    'teradata': 'Teradata', 'googledrive': 'Google Drive', 'azuresql': 'Azure SQL',
+  };
+  const techLabel = typeLabels[rawType] || (r.type || '—');
+
+  return `<span class="badge me-1" style="background:${k.bg};color:${k.text};font-size:0.7rem"><i class="bi ${k.icon} me-1"></i>${k.label}</span><small class="text-muted">${esc(techLabel)}</small>`;
+}
+
 function renderDatasources(rows) {
   _dsRows = Object.fromEntries(rows.map(r => [r.id, r]));
 
@@ -2032,11 +2137,14 @@ function renderDatasources(rows) {
     const link = safeUrl
       ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1" onclick="event.stopPropagation()"><i class="bi bi-box-arrow-up-right"></i></a>`
       : '—';
+    const certMark = r.certified
+      ? `<span class="badge badge-certified ms-1" style="font-size:0.65rem"><i class="bi bi-patch-check-fill me-1"></i>認定済み</span>`
+      : '';
     return `<tr class="wb-data-row" data-ds-id="${esc(r.id)}">
-    <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}</td>
+    <td><span class="wb-expand-icon me-1">▶</span>${esc(r.name)}${certMark}</td>
     <td>${esc(r.project)}</td>
     <td>${esc(r.owner)}</td>
-    <td>${esc(r.type)}</td>
+    <td data-export="${esc(r.connection_kind || r.type || '')}">${dsBadge(r)}</td>
     <td data-order="${esc(r.updated_at || '')}">${fmtDate(r.updated_at)}</td>
     <td data-order="${r.days_stale ?? 9999}">${ageBadge(r.days_stale, 180)}</td>
     <td data-order="${cnt}">${refCell}</td>
@@ -2045,6 +2153,9 @@ function renderDatasources(rows) {
   }).join('');
 
   _dsDt = initTable('tbl-ds', [[4, 'desc']]);
+  _populateFilterSelect('qf-ds-project', rows.map(r => r.project).filter(Boolean));
+  _populateFilterSelect('qf-ds-owner',   rows.map(r => r.owner).filter(Boolean));
+  _populateFilterSelect('qf-ds-kind',    rows.map(r => r.connection_kind).filter(Boolean));
 
   // Row click → expand inline detail panel
   $('#tbl-ds tbody').off('click.ds').on('click.ds', 'tr.wb-data-row', function () {
@@ -2100,7 +2211,7 @@ function buildDsDetailHTML(dsId) {
           <i class="bi bi-info-circle me-1"></i>${tl.ds_info_title}
         </div>
         <table class="table table-sm mb-0" style="font-size:0.8rem;border-color:#e9ecef">
-          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_type}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.type || '—')}</td></tr>
+          <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_type}</th><td class="py-1" style="border-bottom-color:#e9ecef">${ds.type ? dsBadge(ds) : '—'}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_project}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.project || '—')}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_owner}</th><td class="py-1" style="border-bottom-color:#e9ecef">${esc(ds.owner || '—')}</td></tr>
           <tr><th class="text-muted fw-normal py-1 pe-3" style="white-space:nowrap;border-bottom-color:#e9ecef">${tl.ds_info_last_updated}</th><td class="py-1" style="border-bottom-color:#e9ecef">${fmtDate(ds.updated_at)}</td></tr>
@@ -2131,6 +2242,9 @@ function buildDsDetailHTML(dsId) {
 }
 
 function renderViews(rows) {
+  renderViewsRanking(rows);
+
+  const maxViews = rows.reduce((mx, r) => Math.max(mx, r.total_views || 0), 1);
   const tbody = document.getElementById('body-views');
   tbody.innerHTML = rows.map(r => {
     // last_viewed_at が取れていれば最終閲覧日を、なければ最終更新日を表示
@@ -2140,17 +2254,49 @@ function renderViews(rows) {
     const link = safeUrl
       ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-1"><i class="bi bi-box-arrow-up-right"></i></a>`
       : '—';
+    const pct = Math.round((r.total_views || 0) / maxViews * 100);
+    const miniBar = `<div class="bar-wrap d-inline-block ms-1 align-middle" style="width:60px;vertical-align:middle"><div class="bar-fill" style="width:${pct}%"></div></div>`;
     return `<tr>
       <td>${esc(r.name)}</td>
       <td>${esc(r.workbook_name || '')}</td>
       <td>${esc(r.owner)}</td>
-      <td data-order="${r.total_views}"><strong>${r.total_views.toLocaleString()}</strong></td>
+      <td data-order="${r.total_views}" data-export="${r.total_views}"><strong>${r.total_views.toLocaleString()}</strong>${miniBar}</td>
       <td data-order="${esc(viewedAt || '')}">${fmtDate(viewedAt)}</td>
       <td data-order="${viewedDay}">${ageBadge(viewedDay, 180)}</td>
       <td>${link}</td>
     </tr>`;
   }).join('');
-  initTable('tbl-views', [[3, 'desc']]);
+  const dtViews = initTable('tbl-views', [[3, 'desc']]);
+  _populateFilterSelect('qf-views-workbook', rows.map(r => r.workbook_name).filter(Boolean));
+}
+
+function renderViewsRanking(rows) {
+  const body = document.getElementById('views-ranking-body');
+  if (!body) return;
+  const sorted = [...rows].sort((a, b) => (b.total_views || 0) - (a.total_views || 0)).slice(0, 20);
+  if (!sorted.length) { body.innerHTML = '<span class="text-muted small">データなし</span>'; return; }
+  const max = sorted[0].total_views || 1;
+  body.innerHTML = sorted.map((v, i) => `
+    <div class="d-flex align-items-center mb-1 gap-2">
+      <span class="text-muted fw-bold" style="width:1.5rem;text-align:right;font-size:0.78rem">${i + 1}</span>
+      <div style="width:180px;flex-shrink:0;overflow:hidden">
+        <div class="fw-semibold text-truncate" style="font-size:0.82rem" title="${esc(v.name)}">${esc(v.name)}</div>
+        <small class="text-muted" style="font-size:0.7rem">${esc(v.workbook_name || '')}</small>
+      </div>
+      <div class="bar-wrap flex-grow-1">
+        <div class="bar-fill" style="width:${Math.round((v.total_views || 0) / max * 100)}%"></div>
+      </div>
+      <span class="fw-bold" style="width:5rem;text-align:right;font-size:0.82rem">${(v.total_views || 0).toLocaleString()}</span>
+    </div>`).join('');
+}
+
+function toggleViewsRanking() {
+  const body    = document.getElementById('views-ranking-body');
+  const chevron = document.getElementById('views-ranking-chevron');
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (chevron) chevron.className = hidden ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
 }
 
 function renderUsers(rows) {
@@ -2170,6 +2316,7 @@ function renderUsers(rows) {
     </tr>`;
   }).join('');
   initTable('tbl-users', [[4, 'desc']]);
+  _populateFilterSelect('qf-users-license', rows.map(r => r.site_role).filter(Boolean));
 }
 
 // ============================================================
@@ -2208,6 +2355,7 @@ function renderFlows(rows) {
   }).join('');
 
   _flowDt = initTable('tbl-flows', [[3, 'desc']]);
+  _populateFilterSelect('qf-flows-project', rows.map(r => r.project).filter(Boolean));
 
   $('#tbl-flows tbody').off('click.flow').on('click.flow', 'tr.wb-data-row', async function () {
     const $tr    = $(this);
@@ -3468,6 +3616,180 @@ function _revChangedHtml(item, key) {
       <div><span class="text-success small">${t.rev_diff_formula_new}:</span> <code class="small">${esc(JSON.stringify(item.new_connections))}</code></div>`;
   }
   return _revItemHtml(item.head || item, key);
+}
+
+// ============================================================
+// クイックフィルター ユーティリティ
+// ============================================================
+
+/**
+ * selectId に重複なし・ソート済みの option を追加する。
+ * 既存の最初の "— xxx —" option は残したままにする。
+ */
+function _populateFilterSelect(selectId, values) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  // 先頭のプレースホルダ option だけ残す
+  const placeholder = el.options[0];
+  el.innerHTML = '';
+  el.appendChild(placeholder);
+  [...new Set(values)].sort().forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    el.appendChild(opt);
+  });
+}
+
+/**
+ * DataTables の指定列にクイックフィルターを適用する。
+ * val が空の場合はその列のフィルターをクリアする。
+ */
+function applyQuickFilter(tableId, colIdx, val) {
+  if (!$.fn.DataTable.isDataTable('#' + tableId)) return;
+  const dt = $('#' + tableId).DataTable();
+  dt.column(colIdx).search(val, false, false).draw();
+}
+
+/**
+ * 指定テーブルの複数フィルターをリセットする。
+ */
+function resetQuickFilters(tableId, selectIds) {
+  selectIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
+  if (!$.fn.DataTable.isDataTable('#' + tableId)) return;
+  const dt = $('#' + tableId).DataTable();
+  // 全列のサーチをクリア
+  dt.columns().search('').draw();
+}
+
+// ============================================================
+// ユーザー別アクセスタブ
+// ============================================================
+let _userActivityData = null;
+let _userActivityDt   = null;
+
+async function loadUserActivity() {
+  const btn = document.getElementById('btn-load-useractivity');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>読み込み中...';
+  }
+  try {
+    const data = await fetchJSON('/api/user-activity');
+    _userActivityData = data;
+    renderUserActivity(data);
+  } catch(e) {
+    document.getElementById('useractivity-result').innerHTML =
+      `<div class="alert alert-danger">${esc(e.message)}</div>`;
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>読み込む';
+    }
+  }
+}
+
+function renderUserActivity(data) {
+  const rows = Array.isArray(data) ? data : (data.users || []);
+  const resultEl = document.getElementById('useractivity-result');
+
+  // ── Top 5 ランキングカード ──
+  const top5 = [...rows]
+    .sort((a, b) => (b.total_view_count || 0) - (a.total_view_count || 0))
+    .slice(0, 5);
+  const maxViews = top5.length ? (top5[0].total_view_count || 1) : 1;
+
+  const rankingHTML = top5.length ? `
+    <div class="card border-0 shadow-sm mb-3 p-3">
+      <h6 class="fw-bold mb-2" style="color:var(--tc-mid)"><i class="bi bi-trophy-fill me-1"></i>誰が一番見ているか（上位5名）</h6>
+      ${top5.map((u, i) => `
+        <div class="d-flex align-items-center mb-1 gap-2">
+          <span class="text-muted fw-bold" style="width:1.5rem;text-align:right;font-size:0.78rem">${i + 1}</span>
+          <div style="width:200px;flex-shrink:0;overflow:hidden">
+            <div class="fw-semibold text-truncate" style="font-size:0.82rem">${esc(u.name || u.display_name || u.email || '—')}</div>
+            <small class="text-muted" style="font-size:0.7rem">${esc(u.email || '')}</small>
+          </div>
+          <div class="bar-wrap flex-grow-1">
+            <div class="bar-fill" style="width:${Math.round((u.total_view_count || 0) / maxViews * 100)}%"></div>
+          </div>
+          <span class="fw-bold" style="width:5rem;text-align:right;font-size:0.82rem">${(u.total_view_count || 0).toLocaleString()}</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  // ── DataTable ──
+  const tableHTML = `
+    <div class="card border-0 shadow-sm p-2">
+      <table id="tbl-useractivity" class="table table-sm table-hover w-100">
+        <thead><tr>
+          <th>名前</th><th>メール</th><th>所有WB数</th><th>所有DS数</th><th>所有シート数</th><th>累計閲覧数</th><th>サブスク数</th>
+        </tr></thead>
+        <tbody id="body-useractivity"></tbody>
+      </table>
+    </div>`;
+
+  resultEl.innerHTML = rankingHTML + tableHTML;
+
+  const tbody = document.getElementById('body-useractivity');
+  tbody.innerHTML = rows.map(r => `<tr class="wb-data-row" data-ua-idx="${esc(String(rows.indexOf(r)))}">
+    <td>${esc(r.name || r.display_name || '—')}</td>
+    <td>${esc(r.email || '—')}</td>
+    <td>${r.owned_wb_count ?? '—'}</td>
+    <td>${r.owned_ds_count ?? '—'}</td>
+    <td>${r.owned_view_count ?? '—'}</td>
+    <td data-order="${r.total_view_count || 0}"><strong>${(r.total_view_count || 0).toLocaleString()}</strong></td>
+    <td>${r.subscription_count ?? '—'}</td>
+  </tr>`).join('');
+
+  if (_userActivityDt && $.fn.DataTable.isDataTable('#tbl-useractivity')) {
+    $('#tbl-useractivity').DataTable().destroy();
+  }
+  _userActivityDt = initTable('tbl-useractivity', [[5, 'desc']]);
+
+  // Row click → expand detail
+  $('#tbl-useractivity tbody').off('click.ua').on('click.ua', 'tr.wb-data-row', function() {
+    const $tr  = $(this);
+    const idx  = parseInt(this.dataset.uaIdx, 10);
+    const row  = _userActivityDt.row($tr);
+    const u    = rows[idx] || {};
+
+    if (row.child.isShown()) {
+      row.child.hide();
+      $tr.removeClass('wb-row-open');
+      return;
+    }
+    $tr.addClass('wb-row-open');
+
+    const ownedViews = (u.owned_views || [])
+      .sort((a, b) => (b.total_views || 0) - (a.total_views || 0))
+      .slice(0, 20);
+    const maxV = ownedViews.length ? (ownedViews[0].total_views || 1) : 1;
+
+    const viewsHTML = ownedViews.length
+      ? `<div class="mb-2 fw-semibold small text-secondary"><i class="bi bi-eye me-1"></i>所有ビュー（上位20件）</div>
+         ${ownedViews.map(v => `
+           <div class="d-flex align-items-center gap-2 mb-1">
+             <div style="width:200px;overflow:hidden">
+               <div class="text-truncate" style="font-size:0.8rem" title="${esc(v.name)}">${esc(v.name)}</div>
+               <small class="text-muted" style="font-size:0.7rem">${esc(v.workbook_name || '')}</small>
+             </div>
+             <div class="bar-wrap flex-grow-1">
+               <div class="bar-fill" style="width:${Math.round((v.total_views || 0) / maxV * 100)}%"></div>
+             </div>
+             <span style="width:4rem;text-align:right;font-size:0.8rem">${(v.total_views || 0).toLocaleString()}</span>
+           </div>`).join('')}`
+      : '<span class="text-muted small">所有ビューなし</span>';
+
+    const subs = u.subscriptions || [];
+    const subsHTML = subs.length
+      ? `<div class="mb-2 fw-semibold small text-secondary mt-3"><i class="bi bi-envelope me-1"></i>サブスクリプション（${subs.length}件）</div>
+         ${subs.map(s => `<div class="small mb-1"><i class="bi bi-dot"></i>${esc(s.content_name || '—')} <small class="text-muted">${esc(s.frequency || '')}</small></div>`).join('')}`
+      : '<span class="text-muted small">サブスクリプションなし</span>';
+
+    row.child(`<div class="wb-detail-panel p-3">${viewsHTML}${subsHTML}</div>`).show();
+  });
 }
 </script>
 </body>
