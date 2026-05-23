@@ -127,7 +127,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Cloud Admin Kit for Tableau",
     description="Tableau Cloud の管理情報をブラウザで確認・更新するローカルツール",
-    version="1.7.2",
+    version="1.8.0",
     lifespan=lifespan,
 )
 
@@ -230,6 +230,79 @@ async def trigger_refresh():
     t = threading.Thread(target=_do_fetch, daemon=True)
     t.start()
     return {"message": "データ取得を開始しました。数秒後にページを更新してください。"}
+
+
+@app.get("/api/user-activity")
+async def get_user_activity():
+    """ユーザー別アクセス統計（所有コンテンツ・サブスクリプション・閲覧数）を返す"""
+    data = _require_data()
+    users    = data["users"]
+    wbs      = data["workbooks"]
+    ds_list  = data["datasources"]
+    views    = data["views"]
+    scheds   = data["schedules"]
+
+    # owner_id をキーに集計
+    stats: dict[str, Any] = {}
+    for u in users:
+        uid = u["id"]
+        stats[uid] = {
+            **u,
+            "owned_wb_count":   0,
+            "owned_ds_count":   0,
+            "owned_view_count": 0,
+            "total_view_count": 0,   # 所有シートの累計閲覧数
+            "sub_count":        0,
+            "subscriptions":    [],
+            "owned_views":      [],  # 上位 20 件
+        }
+
+    # ワークブック
+    for wb in wbs:
+        uid = wb.get("owner_id", "")
+        if uid in stats:
+            stats[uid]["owned_wb_count"] += 1
+
+    # データソース
+    for ds in ds_list:
+        uid = ds.get("owner_id", "")
+        if uid in stats:
+            stats[uid]["owned_ds_count"] += 1
+
+    # ビュー（所有 + 閲覧数）
+    for v in views:
+        uid = v.get("owner_id", "")
+        if uid in stats:
+            stats[uid]["owned_view_count"] += 1
+            stats[uid]["total_view_count"] += v.get("total_views", 0)
+            stats[uid]["owned_views"].append({
+                "name":         v["name"],
+                "workbook_name": v.get("workbook_name", ""),
+                "total_views":  v.get("total_views", 0),
+                "url":          v.get("url", ""),
+            })
+
+    # サブスクリプション
+    for s in scheds:
+        if s.get("schedule_kind") != "subscription":
+            continue
+        uid = s.get("owner_id", "")
+        if uid in stats:
+            stats[uid]["sub_count"] += 1
+            stats[uid]["subscriptions"].append({
+                "content_name": s["content_name"],
+                "content_type": s["content_type"],
+                "subject":      s.get("subject", ""),
+                "frequency":    s.get("frequency", ""),
+            })
+
+    # owned_views をビュー数降順にソートし上位 20 件に絞る
+    for uid, s in stats.items():
+        s["owned_views"] = sorted(
+            s["owned_views"], key=lambda v: v["total_views"], reverse=True
+        )[:20]
+
+    return list(stats.values())
 
 
 @app.get("/api/ktw-fields")

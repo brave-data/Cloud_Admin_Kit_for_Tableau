@@ -291,6 +291,7 @@ def fetch_all() -> dict[str, Any]:
             "name":         wb.name,
             "project":      wb.project_name or "",
             "owner":        user_map.get(wb.owner_id, "Unknown"),
+            "owner_id":     wb.owner_id or "",
             "created_at":   _fmt(wb.created_at),
             "updated_at":   _fmt(wb.updated_at),
             "days_stale":   _days_ago(wb.updated_at),
@@ -301,21 +302,50 @@ def fetch_all() -> dict[str, Any]:
         })
 
     # ── データソース ─────────────────────────────────────
+    # DS 種別分類マップ（datasource_type → connection_kind）
+    _LIVE_TYPES = {
+        "sqlserver", "postgres", "postgresql", "mysql", "oracle", "redshift",
+        "snowflake", "databricks", "bigquery", "googlebigquery", "teradata",
+        "salesforce", "sforce", "googledrive", "google-analytics", "googleanalytics",
+        "dynamodb", "athena", "spark", "hive", "impala", "presto",
+        "netsuite", "servicenow", "sharepoint", "azuresql", "azuredataexplorer",
+    }
+    _FILE_TYPES = {
+        "excel-direct", "excel", "text", "csv", "json", "xml", "pdf",
+        "googledrivespreadsheet",
+    }
+
     datasources = []
     for ds in datasources_raw:
+        raw_type = (ds.datasource_type or "").lower()
+        has_extracts = bool(getattr(ds, "has_extracts", False))
+        if raw_type == "hyper":
+            connection_kind = "extract"
+        elif raw_type in _LIVE_TYPES:
+            connection_kind = "live"
+        elif raw_type in _FILE_TYPES:
+            connection_kind = "file"
+        elif has_extracts:
+            connection_kind = "extract"
+        else:
+            connection_kind = "live"
+
         datasources.append({
-            "id":           ds.id,
-            "name":         ds.name,
-            "project":      ds.project_name or "",
-            "owner":        user_map.get(ds.owner_id, "Unknown"),
-            "type":         ds.datasource_type or "",
-            "certified":    bool(getattr(ds, "certified", False)),
-            "cert_note":    ds.certification_note or "",
-            "created_at":   _fmt(ds.created_at),
-            "updated_at":   _fmt(ds.updated_at),
-            "days_stale":   _days_ago(ds.updated_at),
-            "description":  ds.description or "",
-            "url":          _tableau_url(_server_url, _site_name, "datasources", ds.id),
+            "id":              ds.id,
+            "name":            ds.name,
+            "project":         ds.project_name or "",
+            "owner":           user_map.get(ds.owner_id, "Unknown"),
+            "owner_id":        ds.owner_id or "",
+            "type":            ds.datasource_type or "",
+            "connection_kind": connection_kind,
+            "has_extracts":    has_extracts,
+            "certified":       bool(getattr(ds, "certified", False)),
+            "cert_note":       ds.certification_note or "",
+            "created_at":      _fmt(ds.created_at),
+            "updated_at":      _fmt(ds.updated_at),
+            "days_stale":      _days_ago(ds.updated_at),
+            "description":     ds.description or "",
+            "url":             _tableau_url(_server_url, _site_name, "datasources", ds.id),
         })
 
     # ── ビュー (使用状況付き) ───────────────────────────
@@ -333,6 +363,7 @@ def fetch_all() -> dict[str, Any]:
             "name":             v.name,
             "workbook_id":      v.workbook_id,
             "owner":            user_map.get(v.owner_id, "Unknown"),
+            "owner_id":         v.owner_id or "",
             "total_views":      v.total_views or 0,
             "created_at":       _fmt(v.created_at),
             "updated_at":       _fmt(v.updated_at),
@@ -462,6 +493,7 @@ def fetch_all() -> dict[str, Any]:
         # user_id 属性から直接取得（SubscriptionItem に user オブジェクトは存在しない）
         owner_name = user_map.get(getattr(sub, "user_id", None), "Unknown")
         frequency, next_run_at = _extract_schedule_info(sub)
+        sub_user_id = getattr(sub, "user_id", None) or ""
         schedules.append({
             "id":            sub.id,
             "schedule_kind": "subscription",
@@ -469,6 +501,7 @@ def fetch_all() -> dict[str, Any]:
             "content_type":  content_type,
             "project":       "",
             "owner":         owner_name,
+            "owner_id":      sub_user_id,
             "refresh_type":  "",
             "frequency":     frequency,
             "next_run_at":   next_run_at,
